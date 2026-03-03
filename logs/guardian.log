@@ -11,3 +11,12 @@ Shutting down AI Security Guardian gracefully...
 2026-03-04 00:10:15,891 - WARNING - ⚠️ [SECURITY ALERT] Sensitive data detected in clipboard (aws_key)!
 2026-03-04 00:11:00 - [Milestone] Clipboard Monitor Module Implemented and Verified. Detected test AWS Key successfully.
 2026-03-04 03:25 - [R&D Step] Enhanced ActiveWindowMonitor to detect window titles via AppleScript. Updated targets to include Settings/Passwords.
+2026-03-04 03:21:49,681 - INFO - Starting AI Security Guardian...
+2026-03-04 03:21:49,681 - INFO - Directory exists: /Users/neillu/Desktop/AI_Security_Guardian/logs
+2026-03-04 03:21:49,683 - INFO - Configuration loaded successfully.
+2026-03-04 03:21:49,684 - INFO - Clipboard Monitor started.
+2026-03-04 03:21:49,684 - INFO - Active Window Monitor (Visual Sentry) started.
+2026-03-04 03:21:49,684 - INFO - Keystroke Monitor (Terminal Rules) started.
+2026-03-04 03:21:49,685 - INFO - System Heartbeat started.
+2026-03-04 03:21:49,691 - INFO - AI Security Guardian is now monitoring the system. (Modules initialized)
+2026-03-04 03:21:49,691 - INFO - Guardian status: Running [Active Modules: ['ClipboardMonitor', 'ActiveWindowMonitor', 'KeystrokeMonitor']]

@@ -126,8 +126,6 @@ class ClipboardMonitor(threading.Thread):
 
     def stop(self):
         self.running = False
-        if hasattr(self, "listener"):
-            self.listener.stop()
 
 
 class ActiveWindowMonitor(threading.Thread):
@@ -192,8 +190,6 @@ class ActiveWindowMonitor(threading.Thread):
 
     def stop(self):
         self.running = False
-        if hasattr(self, "listener"):
-            self.listener.stop()
 
 
 class KeystrokeMonitor(threading.Thread):
@@ -209,6 +205,7 @@ class KeystrokeMonitor(threading.Thread):
         self.high_risk_keywords = config.get('terminal_rules', {}).get('high_risk_keywords', [])
         self.daemon = True
         self.buffer = []
+        self.running = True
         
     def get_frontmost_app(self):
         try:
@@ -219,6 +216,9 @@ class KeystrokeMonitor(threading.Thread):
             return ""
 
     def on_press(self, key):
+        if not self.running:
+            return False
+            
         active_app = self.get_frontmost_app()
         # 限定只在 Terminal 或 iTerm2 活躍時紀錄 (可降低資源消耗與隱私疑慮)
         if active_app not in ['Terminal', 'iTerm2']:
@@ -249,22 +249,34 @@ class KeystrokeMonitor(threading.Thread):
 
     def run(self):
         logger.info("Keystroke Monitor (Terminal Rules) started.")
-        self.running = True
-        self.buffer = []
         with keyboard.Listener(on_press=self.on_press) as self.listener:
             while self.running:
                 time.sleep(1)
             self.listener.stop()
 
-    def on_press(self, key):
-        if not self.running:
-            return False
-        active_app = self.get_frontmost_app()
+    def stop(self):
+        self.running = False
+
+
+class SystemHeartbeat(threading.Thread):
+    """
+    系統健康檢查心跳，每 5 分鐘紀錄一次運行狀態。
+    """
+    def __init__(self, monitors):
+        super().__init__()
+        self.monitors = monitors
+        self.daemon = True
+        self.running = True
+
+    def run(self):
+        logger.info("System Heartbeat started.")
+        while self.running:
+            active_modules = [m.__class__.__name__ for m in self.monitors if m.is_alive()]
+            logger.info(f"Guardian status: Running [Active Modules: {active_modules}]")
+            time.sleep(300)
 
     def stop(self):
         self.running = False
-        if hasattr(self, "listener"):
-            self.listener.stop()
 
 
 # ============================================================================
@@ -282,17 +294,20 @@ def main():
     # 初始化通報器
     notifier = TelegramNotifier(config)
 
-    # 模組1: 剪貼簿防火牆
-    clipboard_monitor = ClipboardMonitor(config, notifier)
-    clipboard_monitor.start()
+    # 初始化監控模組
+    monitors = [
+        ClipboardMonitor(config, notifier),
+        ActiveWindowMonitor(config, notifier),
+        KeystrokeMonitor(config, notifier)
+    ]
 
-    # 模組2: 視覺哨兵 (截圖擷取)
-    window_monitor = ActiveWindowMonitor(config, notifier)
-    window_monitor.start()
+    # 啟動監控模組
+    for m in monitors:
+        m.start()
 
-    # 模組3: 終端機按鍵側錄攔截
-    keystroke_monitor = KeystrokeMonitor(config, notifier)
-    keystroke_monitor.start()
+    # 啟動系統心跳
+    heartbeat = SystemHeartbeat(monitors)
+    heartbeat.start()
 
     logger.info("AI Security Guardian is now monitoring the system. (Modules initialized)")
     
@@ -302,9 +317,9 @@ def main():
             
     except KeyboardInterrupt:
         logger.info("Shutting down AI Security Guardian gracefully...")
-        clipboard_monitor.stop()
-        window_monitor.stop()
-        keystroke_monitor.stop()
+        for m in monitors:
+            m.stop()
+        heartbeat.stop()
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
 
