@@ -16,6 +16,9 @@ terminal_rules:
     - 'chmod 777'
     - 'mkfs'
     - 'dd if='
+    - 'curl -sSL'
+    - 'wget -O'
+    - 'nc -e'
 
 visual_sentry:
   # 觸發截圖的系統視窗標題或應用程式名稱（對應 macOS 特權視窗）
