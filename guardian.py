@@ -246,11 +246,14 @@ class KeystrokeMonitor(threading.Thread):
     def run(self):
         logger.info("Keystroke Monitor (Terminal Rules) started.")
         # pynput listener block 住原本 thread，不用寫 while loop
+        self.running = True
         with keyboard.Listener(on_press=self.on_press) as listener:
-            listener.join()
+            while self.running:
+                time.sleep(1)
+            listener.stop()
 
     def stop(self):
-        pass
+        self.running = False
 
 
 # ============================================================================
