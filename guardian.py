@@ -122,6 +122,15 @@ class ClipboardMonitor(threading.Thread):
                 msg = f"⚠️ [SECURITY ALERT] Sensitive data detected in clipboard ({rule_name})!"
                 logger.warning(msg)
                 print(f"\n{msg}")
+                
+                # Proactive action: Clear clipboard to prevent accidental leak
+                try:
+                    pyperclip.copy("[REDACTED BY GUARDIAN]")
+                    logger.info("Clipboard cleared for safety.")
+                    msg += "\n🛡️ Action taken: Clipboard has been REDACTED."
+                except Exception as e:
+                    logger.error(f"Failed to clear clipboard: {e}")
+                
                 self.notifier.send_alert(msg)
 
     def stop(self):
