@@ -1,0 +1,13 @@
+Directory created: /Users/neillu/Desktop/AI_Security_Guardian/logs
+Configuration loaded successfully.
+AI Security Guardian is now monitoring the system. (Press Ctrl+C to stop)
+Shutting down AI Security Guardian gracefully...
+2026-03-04 00:07:00 - AI Security Guardian R&D Sprint Started. Delegated Clipboard Monitor implementation to Desktop Agent.
+2026-03-04 00:10:10,720 - INFO - Starting AI Security Guardian...
+2026-03-04 00:10:10,720 - INFO - Directory exists: /Users/neillu/Desktop/AI_Security_Guardian/logs
+2026-03-04 00:10:10,721 - INFO - Configuration loaded successfully.
+2026-03-04 00:10:10,721 - INFO - Clipboard Monitor started.
+2026-03-04 00:10:10,721 - INFO - AI Security Guardian is now monitoring the system. (Press Ctrl+C to stop)
+2026-03-04 00:10:15,891 - WARNING - ⚠️ [SECURITY ALERT] Sensitive data detected in clipboard (aws_key)!
+2026-03-04 00:11:00 - [Milestone] Clipboard Monitor Module Implemented and Verified. Detected test AWS Key successfully.
+2026-03-04 03:25 - [R&D Step] Enhanced ActiveWindowMonitor to detect window titles via AppleScript. Updated targets to include Settings/Passwords.

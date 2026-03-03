@@ -1,0 +1,35 @@
+# AI Security Guardian (AI 資安守門員) - Configuration
+
+behavior_firewall:
+  regex_rules:
+    # 範例：偵測 AWS Access Key ID 或 Secret Access Key，可視需求增減
+    aws_key: '(?i)(AKIA[0-9A-Z]{16})'
+    # 範例：偵測基礎的 JWT Token
+    jwt_token: 'eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'
+    # 範例：偵測可能有問題的密碼格式 (此處以單純的長度或複雜度為主，建議依需求調整)
+    password_hint: '(?i)(password|passwd|pwd)\s*=\s*[\w@#%&]+'
+
+terminal_rules:
+  # 高風險指令關鍵字，若剪貼簿或攔截模組偵測到這些字眼，將觸發警報
+  high_risk_keywords:
+    - 'rm -rf /'
+    - 'chmod 777'
+    - 'mkfs'
+    - 'dd if='
+
+visual_sentry:
+  # 觸發截圖的系統視窗標題或應用程式名稱（對應 macOS 特權視窗）
+  target_windows:
+    - 'SecurityAgent'
+    - 'sudo'
+    - 'Terminal'
+    - 'iTerm2'
+    - 'Settings'
+    - 'Passwords'
+    - 'Keychain'
+
+webhook:
+  # Telegram 通知設定
+  telegram:
+    bot_token: '' # 預留：將您的 Telegram Bot Token 填入此處
+    chat_id: ''   # 預留：將您的 Telegram Chat ID 填入此處
