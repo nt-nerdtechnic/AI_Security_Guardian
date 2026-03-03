@@ -126,6 +126,8 @@ class ClipboardMonitor(threading.Thread):
 
     def stop(self):
         self.running = False
+        if hasattr(self, "listener"):
+            self.listener.stop()
 
 
 class ActiveWindowMonitor(threading.Thread):
@@ -190,6 +192,8 @@ class ActiveWindowMonitor(threading.Thread):
 
     def stop(self):
         self.running = False
+        if hasattr(self, "listener"):
+            self.listener.stop()
 
 
 class KeystrokeMonitor(threading.Thread):
@@ -245,15 +249,22 @@ class KeystrokeMonitor(threading.Thread):
 
     def run(self):
         logger.info("Keystroke Monitor (Terminal Rules) started.")
-        # pynput listener block 住原本 thread，不用寫 while loop
         self.running = True
-        with keyboard.Listener(on_press=self.on_press) as listener:
+        self.buffer = []
+        with keyboard.Listener(on_press=self.on_press) as self.listener:
             while self.running:
                 time.sleep(1)
-            listener.stop()
+            self.listener.stop()
+
+    def on_press(self, key):
+        if not self.running:
+            return False
+        active_app = self.get_frontmost_app()
 
     def stop(self):
         self.running = False
+        if hasattr(self, "listener"):
+            self.listener.stop()
 
 
 # ============================================================================
