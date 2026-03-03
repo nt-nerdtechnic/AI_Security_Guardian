@@ -8,6 +8,8 @@ behavior_firewall:
     jwt_token: 'eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'
     # 範例：偵測可能有問題的密碼格式 (此處以單純的長度或複雜度為主，建議依需求調整)
     password_hint: '(?i)(password|passwd|pwd)\s*=\s*[\w@#%&]+'
+    # 範例：偵測 Google Cloud API Key
+    gcp_api_key: 'AIza[0-9A-Za-z-_]{35}'
 
 terminal_rules:
   # 高風險指令關鍵字，若剪貼簿或攔截模組偵測到這些字眼，將觸發警報
@@ -19,6 +21,11 @@ terminal_rules:
     - 'curl -sSL'
     - 'wget -O'
     - 'nc -e'
+    - 'sh -c'
+    - 'eval'
+    - 'base64 -d'
+    - '> /dev/tcp/'
+    - 'sudo rm'
 
 visual_sentry:
   # 觸發截圖的系統視窗標題或應用程式名稱（對應 macOS 特權視窗）
@@ -30,6 +37,13 @@ visual_sentry:
     - 'Settings'
     - 'Passwords'
     - 'Keychain'
+
+network_monitor:
+  # 網路由監控設定
+  check_interval: 5  # 每 5 秒檢查一次
+  high_bandwidth_threshold_mb: 50  # 單一連線流量超過 50MB 警報
+  suspicious_ports: [4444, 1337, 31337, 8888] # 常見惡意/後門連線埠
+  target_processes: ['python', 'node', 'curl', 'wget', 'ssh', 'nc']
 
 webhook:
   # Telegram 通知設定
