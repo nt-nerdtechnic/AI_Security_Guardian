@@ -104,6 +104,25 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"Telegram webhook exception: {e}")
 
+    def send_snapshot(self, filepath, caption=""):
+        """傳送圖片檔案到指定 Telegram"""
+        if not self.bot_token or not self.chat_id:
+            logger.debug("Telegram credentials not configured. Skipping snapshot upload.")
+            return
+
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+        try:
+            with open(filepath, 'rb') as f:
+                files = {'photo': f}
+                data = {'chat_id': self.chat_id, 'caption': caption}
+                resp = requests.post(url, data=data, files=files, timeout=30)
+                if resp.status_code == 200:
+                    logger.debug("Telegram snapshot sent successfully.")
+                else:
+                    logger.error(f"Failed to send Telegram snapshot: {resp.text}")
+        except Exception as e:
+            logger.error(f"Telegram photo webhook exception: {e}")
+
 
 # ============================================================================
 # Modules
@@ -224,7 +243,8 @@ class ActiveWindowMonitor(threading.Thread):
                 metadata={"trigger": trigger_name, "snapshot_file": str(filepath)}
             )
 
-            self.notifier.send_alert(msg)
+            # Auto-send file via Telegram if configured
+            self.notifier.send_snapshot(filepath, msg)
         except Exception as e:
             logger.error(f"Failed to take snapshot: {e}")
 
