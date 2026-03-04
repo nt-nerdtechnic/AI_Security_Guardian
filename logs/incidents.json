@@ -1,0 +1,2 @@
+[{"module": "auth", "event": "login_fail"}, {"module": "auth", "event": "password_reset"}, {"module": "network", "event": "ddos_blocked"}]
+{"timestamp": "2026-03-04T08:45:42.824108", "module": "VisualSentry", "severity": "WARNING", "message": "Privilege window detected: Terminal", "metadata": {"trigger": "Terminal", "snapshot_file": "/Users/neillu/Desktop/AI_Security_Guardian/logs/snapshot_Terminal_20260304_084542.png"}}

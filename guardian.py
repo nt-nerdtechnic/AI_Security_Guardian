@@ -12,6 +12,7 @@ import psutil
 from datetime import datetime
 from pathlib import Path
 from pynput import keyboard
+from guardian_core.actions.mitigation import kill_process_by_pid
 
 # ============================================================================
 # Core Configuration
@@ -331,6 +332,19 @@ class KeystrokeMonitor(threading.Thread):
                             message=f"High risk command detected",
                             metadata={"command": cmd, "matched_keyword": kw}
                         )
+                        
+                        # Phase R&D: Take visual proof of the high-risk command in terminal
+                        active_app = self.get_frontmost_app()
+                        if active_app in ['Terminal', 'iTerm2']:
+                            # Using a local helper or direct call to ActiveWindowMonitor logic
+                            # For simplicity in this incremental step, we trigger a dedicated capture
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            filepath = LOGS_DIR / f"terminal_alert_{timestamp}.png"
+                            try:
+                                subprocess.run(['screencapture', '-x', str(filepath)], check=True)
+                                self.notifier.send_snapshot(filepath, f"🚨 {msg}")
+                            except Exception as e:
+                                logger.error(f"Failed to capture terminal proof: {e}")
 
                         self.notifier.send_alert(msg)
         except Exception as e:
@@ -441,6 +455,14 @@ class NetworkMonitor(threading.Thread):
                                             metadata={"port": port, "pid": pid, "command": command}
                                         )
                                         self.notifier.send_alert(msg)
+                                        
+                                        # Incremental Step: Auto-mitigation for suspicious ports
+                                        # Only kill if the process name isn't a known safe one (to avoid killing the agent itself or dev tools)
+                                        if command not in ['Python', 'node', 'ssh', 'iterm2', 'terminal']:
+                                            if kill_process_by_pid(pid):
+                                                mitigation_msg = f"🛡️ [MITIGATION] Process {command} (PID: {pid}) was KILLED due to suspicious activity on port {port}."
+                                                logger.warning(mitigation_msg)
+                                                self.notifier.send_alert(mitigation_msg)
                                 except:
                                     continue
             except Exception as e:
