@@ -4,9 +4,11 @@ import yaml
 import logging
 import re
 import threading
+import json
 import pyperclip
 import requests
 import subprocess
+import psutil
 from datetime import datetime
 from pathlib import Path
 from pynput import keyboard
@@ -17,6 +19,7 @@ from pynput import keyboard
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / 'config.yaml'
 LOGS_DIR = BASE_DIR / 'logs'
+INCIDENTS_JSON = LOGS_DIR / 'incidents.json'
 
 # Logger Setup
 logging.basicConfig(
@@ -39,6 +42,25 @@ def ensure_environment():
         logger.info(f"Directory created: {LOGS_DIR}")
     else:
         logger.info(f"Directory exists: {LOGS_DIR}")
+
+def record_incident(module, severity, message, metadata=None):
+    """
+    Records a security incident in a structured JSON format.
+    Appends the incident to logs/incidents.json as Newline Delimited JSON (NDJSON).
+    """
+    incident = {
+        "timestamp": datetime.now().isoformat(),
+        "module": module,
+        "severity": severity,
+        "message": message,
+        "metadata": metadata or {}
+    }
+    
+    try:
+        with open(INCIDENTS_JSON, "a", encoding="utf-8") as f:
+            f.write(json.dumps(incident, ensure_ascii=False) + "\n")
+    except Exception as e:
+        logger.error(f"Failed to record incident to JSON: {e}")
 
 def load_config():
     """載入 config.yaml 設定檔"""
@@ -123,6 +145,14 @@ class ClipboardMonitor(threading.Thread):
                 logger.warning(msg)
                 print(f"\n{msg}")
                 
+                # Record incident to JSON
+                record_incident(
+                    module="ClipboardMonitor",
+                    severity="WARNING",
+                    message=f"Sensitive data detected (matched rule: {rule_name})",
+                    metadata={"rule_name": rule_name, "preview": content[:100]}
+                )
+
                 # Proactive action: Clear clipboard to prevent accidental leak
                 try:
                     pyperclip.copy("[REDACTED BY GUARDIAN]")
@@ -150,16 +180,19 @@ class ActiveWindowMonitor(threading.Thread):
         self.target_windows = config.get('visual_sentry', {}).get('target_windows', [])
         self.daemon = True
         self.running = True
-        self.last_window = ""
+        self.last_app = ""
+        self.last_snapshot_time = 0
+        self.cooldown = 10  # Seconds cooldown between snapshots
 
     def get_frontmost_info(self):
         """獲取作用中應用程式名稱與視窗標題"""
         try:
             # 透過 AppleScript 查詢當前最高層級的應用程式名稱與視窗標題
             script = 'tell application "System Events" to tell (first application process whose frontmost is true) to get {name, name of window 1}'
-            result = subprocess.check_output(['osascript', '-e', script])
+            result = subprocess.check_output(['osascript', '-e', script], timeout=2)
             # 解析結果，例如 "Terminal, Logs"
-            parts = result.decode('utf-8').strip().split(', ')
+            output = result.decode('utf-8').strip()
+            parts = [p.strip() for p in output.split(',')]
             app_name = parts[0] if len(parts) > 0 else ""
             window_title = parts[1] if len(parts) > 1 else ""
             return app_name, window_title
@@ -167,14 +200,30 @@ class ActiveWindowMonitor(threading.Thread):
             return "", ""
 
     def take_snapshot(self, trigger_name):
+        current_time = time.time()
+        if current_time - self.last_snapshot_time < self.cooldown:
+            logger.debug(f"Snapshot cooldown active for {trigger_name}. Skipping.")
+            return
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filepath = LOGS_DIR / f"snapshot_{trigger_name}_{timestamp}.png"
         try:
             # 使用系統自帶 screencapture (-x 靜音)
             subprocess.run(['screencapture', '-x', str(filepath)], check=True)
+            self.last_snapshot_time = current_time
+            
             msg = f"📸 [VISUAL SENTRY] Privilege window detected ({trigger_name}). Snapshot saved: {filepath.name}"
             logger.warning(msg)
             print(f"\n{msg}")
+
+            # Record incident to JSON
+            record_incident(
+                module="VisualSentry",
+                severity="WARNING",
+                message=f"Privilege window detected: {trigger_name}",
+                metadata={"trigger": trigger_name, "snapshot_file": str(filepath)}
+            )
+
             self.notifier.send_alert(msg)
         except Exception as e:
             logger.error(f"Failed to take snapshot: {e}")
@@ -184,18 +233,20 @@ class ActiveWindowMonitor(threading.Thread):
         while self.running:
             try:
                 app_name, window_title = self.get_frontmost_info()
-                combined_info = f"{app_name} | {window_title}"
                 
-                if combined_info != self.last_window:
-                    # 檢查是否為特權或目標關注視窗 (App 名稱或 視窗標題)
-                    for target in self.target_windows:
-                        if target.lower() in app_name.lower() or target.lower() in window_title.lower():
-                            self.take_snapshot(target)
-                            break
-                    self.last_window = combined_info
+                # Check if app changed or if it's a target app
+                if app_name != self.last_app:
+                    if app_name:
+                        for target in self.target_windows:
+                            if target.lower() in app_name.lower() or target.lower() in window_title.lower():
+                                self.take_snapshot(target)
+                                break
+                    self.last_app = app_name
+                # If app is same, we don't re-trigger snapshot to avoid title-change spam
+                    
             except Exception as e:
                 logger.error(f"Error in Active Window Monitor: {e}")
-            time.sleep(1.5)
+            time.sleep(2.0)
 
     def stop(self):
         self.running = False
@@ -252,6 +303,15 @@ class KeystrokeMonitor(threading.Thread):
                         msg = f"🛑 [TERMINAL FIREWALL] High risk command detected: '{cmd}' (matched '{kw}')"
                         logger.warning(msg)
                         print(f"\n{msg}")
+
+                        # Record incident to JSON
+                        record_incident(
+                            module="TerminalFirewall",
+                            severity="CRITICAL",
+                            message=f"High risk command detected",
+                            metadata={"command": cmd, "matched_keyword": kw}
+                        )
+
                         self.notifier.send_alert(msg)
         except Exception as e:
             pass
@@ -269,7 +329,7 @@ class KeystrokeMonitor(threading.Thread):
 
 class SystemHeartbeat(threading.Thread):
     """
-    系統健康檢查心跳，每 5 分鐘紀錄一次運行狀態。
+    系統健康檢查心跳，每 1 分鐘紀錄一次運行狀態。
     """
     def __init__(self, monitors):
         super().__init__()
@@ -279,10 +339,100 @@ class SystemHeartbeat(threading.Thread):
 
     def run(self):
         logger.info("System Heartbeat started.")
+        process = psutil.Process(os.getpid())
         while self.running:
             active_modules = [m.__class__.__name__ for m in self.monitors if m.is_alive()]
-            logger.info(f"Guardian status: Running [Active Modules: {active_modules}]")
-            time.sleep(300)
+            
+            # Resource monitoring
+            mem_info = process.memory_info()
+            cpu_usage = process.cpu_percent(interval=None)
+            mem_mb = mem_info.rss / 1024 / 1024
+            
+            status_msg = f"Guardian status: Running [Modules: {len(active_modules)}] | CPU: {cpu_usage}% | MEM: {mem_mb:.1f}MB"
+            logger.info(status_msg)
+            
+            # Auto-restart/Critical alert logic if thresholds exceeded
+            # Configurable limits for R&D stability
+            MAX_MEM_MB = 200 
+            MAX_CPU_PERCENT = 80
+
+            if mem_mb > MAX_MEM_MB:
+                msg = f"🛑 [SELF-PROTECTION] Critical Memory Leak: {mem_mb:.1f}MB. Initiating Emergency Shutdown."
+                logger.critical(msg)
+                os._exit(1) # Immediate exit to trigger potential OS-level restart or alert
+
+            if cpu_usage > MAX_CPU_PERCENT:
+                logger.warning(f"⚠️ [RESOURCE WATCH] High CPU usage detected: {cpu_usage}%")
+                
+            time.sleep(60) # Increased frequency for R&D phase
+
+    def stop(self):
+        self.running = False
+
+
+class NetworkMonitor(threading.Thread):
+    """
+    監控網路連線，識別異常流量或可疑連接埠。
+    """
+    def __init__(self, config, notifier):
+        super().__init__()
+        self.config = config.get('network_monitor', {})
+        self.notifier = notifier
+        self.daemon = True
+        self.running = True
+        self.interval = self.config.get('check_interval', 5)
+        self.threshold = self.config.get('high_bandwidth_threshold_mb', 50) * 1024 * 1024
+        self.suspicious_ports = self.config.get('suspicious_ports', [])
+        self.target_processes = self.config.get('target_processes', [])
+        self.last_stats = {}
+
+    def run(self):
+        logger.info("Network Monitor started (using lsof fallback).")
+        while self.running:
+            try:
+                # 使用 lsof 獲取當前連線，避免 psutil.net_connections 權限問題
+                # -i: 選擇網路檔案, -n: 不解析主機名, -P: 不解析連接埠名
+                output = subprocess.check_output(['lsof', '-i', '-nP'], stderr=subprocess.STDOUT).decode()
+                lines = output.splitlines()
+                if len(lines) > 1:
+                    headers = lines[0].split()
+                    for line in lines[1:]:
+                        parts = line.split()
+                        if len(parts) < 9: continue
+                        
+                        command = parts[0]
+                        pid = parts[1]
+                        # 檢查遠端地址 (通常在第 9 欄位)
+                        # 格式如: 192.168.1.1:1234->1.2.3.4:4444 (ESTABLISHED)
+                        remote_info = parts[8]
+                        if '->' in remote_info:
+                            remote_addr = remote_info.split('->')[1]
+                            if ':' in remote_addr:
+                                port_str = remote_addr.split(':')[-1]
+                                try:
+                                    port = int(port_str)
+                                    if port in self.suspicious_ports:
+                                        msg = f"🛡️ [NETWORK ALERT] Suspicious port detected via lsof! Port: {port}, Command: {command} (PID: {pid})"
+                                        logger.warning(msg)
+                                        record_incident(
+                                            module="NetworkMonitor",
+                                            severity="WARNING",
+                                            message="Suspicious outbound port detected",
+                                            metadata={"port": port, "pid": pid, "command": command}
+                                        )
+                                        self.notifier.send_alert(msg)
+                                except:
+                                    continue
+            except Exception as e:
+                logger.error(f"Error in Network Monitor (lsof): {e}")
+            
+            time.sleep(self.interval)
+
+    def get_proc_name(self, pid):
+        try:
+            return psutil.Process(pid).name()
+        except:
+            return "Unknown"
 
     def stop(self):
         self.running = False
@@ -307,7 +457,8 @@ def main():
     monitors = [
         ClipboardMonitor(config, notifier),
         ActiveWindowMonitor(config, notifier),
-        KeystrokeMonitor(config, notifier)
+        KeystrokeMonitor(config, notifier),
+        NetworkMonitor(config, notifier)
     ]
 
     # 啟動監控模組
