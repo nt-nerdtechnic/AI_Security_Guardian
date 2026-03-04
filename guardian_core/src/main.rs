@@ -1,4 +1,5 @@
 mod os_agnostic;
+mod interceptor;
 
 use std::time::Duration;
 use tokio::time::sleep;
