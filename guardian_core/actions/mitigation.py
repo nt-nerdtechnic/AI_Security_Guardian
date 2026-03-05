@@ -1,7 +1,6 @@
-import os
-import subprocess
-import logging
 import psutil
+import logging
+import subprocess
 
 logger = logging.getLogger('AI_Guardian')
 
@@ -11,7 +10,6 @@ def kill_process_by_pid(pid):
     """
     try:
         pid = int(pid)
-        # Using psutil for a more cross-platform/clean kill first
         p = psutil.Process(pid)
         p.terminate()
         logger.info(f"Successfully terminated process {pid} ({p.name()})")
@@ -20,7 +18,6 @@ def kill_process_by_pid(pid):
         logger.warning(f"Process {pid} no longer exists.")
         return False
     except Exception as e:
-        # Fallback to shell kill -9 if psutil fails or permission issues
         try:
             subprocess.run(['kill', '-9', str(pid)], check=True)
             logger.info(f"Successfully killed process {pid} via SIGKILL fallback.")
@@ -65,3 +62,32 @@ def block_network_port(port):
     """
     logger.warning(f"Network blocking for port {port} is not yet implemented (Requires root/pfctl).")
     return False
+
+def get_process_children(pid):
+    """
+    Returns a list of PIDs of child processes.
+    """
+    try:
+        pid = int(pid)
+        parent = psutil.Process(pid)
+        return [child.pid for child in parent.children(recursive=True)]
+    except Exception as e:
+        logger.error(f"Failed to get children for PID {pid}: {e}")
+        return []
+
+def kill_process_tree(pid):
+    """
+    Kills a process and all its descendants.
+    """
+    try:
+        pid = int(pid)
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        for child in children:
+            child.kill()
+        parent.kill()
+        logger.info(f"Successfully killed process tree for PID {pid}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to kill process tree for PID {pid}: {e}")
+        return False
