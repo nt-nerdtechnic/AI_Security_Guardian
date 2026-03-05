@@ -534,3 +534,13 @@ dian status: Running [Modules: 4] | CPU: 0.3% | MEM: 42.2MB
 2026-03-05 08:52:47,784 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 45.7MB
 2026-03-05 08:53:47,490 - INFO - Verification snapshot saved: sprint_verify_20260305_0853.png
 2026-03-05 08:53:47,793 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.8% | MEM: 46.7MB
+2026-03-06 03:54:29,364 - INFO - Starting AI Security Guardian...
+2026-03-06 03:54:29,364 - INFO - Directory exists: /Users/neillu/Desktop/AI_Security_Guardian/logs
+2026-03-06 03:54:29,365 - INFO - Configuration loaded successfully.
+2026-03-06 03:54:29,365 - INFO - Clipboard Monitor started.
+2026-03-06 03:54:29,366 - INFO - Active Window Monitor (Visual Sentry) started.
+2026-03-06 03:54:29,366 - INFO - Keystroke Monitor (Terminal Rules) started.
+2026-03-06 03:54:29,366 - INFO - Network Monitor started (using lsof fallback).
+2026-03-06 03:54:29,366 - INFO - System Heartbeat started.
+2026-03-06 03:54:29,368 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.0% | MEM: 65.9MB
+2026-03-06 03:54:29,368 - INFO - AI Security Guardian is now monitoring the system. (Modules initialized)

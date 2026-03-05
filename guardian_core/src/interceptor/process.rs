@@ -18,7 +18,7 @@ impl ProcessMonitor {
         for (pid, process) in self.sys.processes() {
             let name = process.name().to_lowercase();
             // Expanded suspicion list
-            if name.contains("nc") || name.contains("ncat") || name.contains("socat") || 
+            if name == "nc" || name == "ncat" || name == "socat" || 
                name.contains("wireshark") || name.contains("tcpdump") || name.contains("metasploit") {
                 
                 incidents.push(super::super::Incident {
