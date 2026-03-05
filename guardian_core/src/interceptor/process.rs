@@ -1,4 +1,4 @@
-use sysinfo::{System, SystemExt, ProcessExt, Pid, Signal};
+use sysinfo::{System, Pid, Signal};
 
 pub struct ProcessInterceptor {
     sys: System,
@@ -16,7 +16,7 @@ impl ProcessInterceptor {
         self.sys.refresh_process(Pid::from(pid as usize));
         if let Some(process) = self.sys.process(Pid::from(pid as usize)) {
             println!("⚔️ [Interceptor] Attempting to kill PID {}: {}", pid, process.name());
-            return process.kill_with_signal(Signal::Kill).unwrap_or(false);
+            return process.kill_with(Signal::Kill).unwrap_or(false);
         }
         false
     }
@@ -26,7 +26,7 @@ impl ProcessInterceptor {
         let mut count = 0;
         for (pid, process) in self.sys.processes() {
             if process.name() == name {
-                if process.kill_with_signal(Signal::Kill).unwrap_or(false) {
+                if process.kill_with(Signal::Kill).unwrap_or(false) {
                     println!("⚔️ [Interceptor] Terminated process {} (PID: {})", name, pid);
                     count += 1;
                 }

@@ -6,14 +6,14 @@ pub struct SystemInfo {
 
 impl SystemInfo {
     pub fn new() -> Self {
-        use sysinfo::{System, SystemExt};
+        use sysinfo::System;
         let mut sys = System::new_all();
         sys.refresh_all();
         
         Self {
-            hostname: sys.host_name().unwrap_or_else(|| "Unknown".to_string()),
-            os_name: sys.name().unwrap_or_else(|| "Unknown".to_string()),
-            os_version: sys.os_version().unwrap_or_else(|| "Unknown".to_string()),
+            hostname: System::host_name().unwrap_or_else(|| "Unknown".to_string()),
+            os_name: System::name().unwrap_or_else(|| "Unknown".to_string()),
+            os_version: System::os_version().unwrap_or_else(|| "Unknown".to_string()),
         }
     }
 }
