@@ -28,12 +28,28 @@ async fn main() {
     // Heartbeat logic with Process Monitoring
     tokio::spawn(async move {
         let mut count = 0;
+        let memory_scanner = interceptor::memory::MemoryScanner::new();
+
         loop {
             count += 1;
             sys.refresh_all();
             
+            let processes = sys.processes();
+            let process_count = processes.len();
+            
             // Log core status
-            println!("💓 [Heartbeat] Rust Kernel Tick: {}. Monitoring {} processes.", count, sys.processes().len());
+            println!("💓 [Heartbeat] Rust Kernel Tick: {}. Monitoring {} processes.", count, process_count);
+
+            if process_count > 0 {
+                // Randomly select one process to scan
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or(std::time::Duration::from_secs(0));
+                let random_index = now.subsec_nanos() as usize % process_count;
+                
+                if let Some((pid, _)) = processes.iter().nth(random_index) {
+                    // Periodic memory scan stub using the selected PID
+                    memory_scanner.scan_process(pid.as_u32(), b"");
+                }
+            }
             
             // Simplified check for suspicious processes (Phase R&D)
             for (pid, process) in sys.processes() {
