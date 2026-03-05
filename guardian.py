@@ -458,7 +458,8 @@ class NetworkMonitor(threading.Thread):
                                         
                                         # Incremental Step: Auto-mitigation for suspicious ports
                                         # Only kill if the process name isn't a known safe one (to avoid killing the agent itself or dev tools)
-                                        if command not in ['Python', 'node', 'ssh', 'iterm2', 'terminal']:
+                                        # Added 'Code' (VSCode) and 'Antigravity' to exclusion list to prevent workspace disruption
+                                        if command not in ['Python', 'node', 'ssh', 'iterm2', 'terminal', 'Code', 'Antigravity']:
                                             if kill_process_by_pid(pid):
                                                 mitigation_msg = f"🛡️ [MITIGATION] Process {command} (PID: {pid}) was KILLED due to suspicious activity on port {port}."
                                                 logger.warning(mitigation_msg)
@@ -510,6 +511,20 @@ def main():
     # 啟動系統心跳
     heartbeat = SystemHeartbeat(monitors)
     heartbeat.start()
+
+    # R&D Increment: Periodic Snapshot for verification
+    def periodic_status_capture():
+        while True:
+            time.sleep(3600) # Hourly verify
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            filepath = LOGS_DIR / f"sprint_verify_{timestamp}.png"
+            try:
+                subprocess.run(['screencapture', '-x', str(filepath)], check=True)
+                logger.info(f"Verification snapshot saved: {filepath.name}")
+            except:
+                pass
+
+    threading.Thread(target=periodic_status_capture, daemon=True).start()
 
     logger.info("AI Security Guardian is now monitoring the system. (Modules initialized)")
     

@@ -303,3 +303,203 @@ dian status: Running [Modules: 4] | CPU: 0.3% | MEM: 42.2MB
 2026-03-05 05:21:23,914 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.4MB
 2026-03-05 05:22:23,925 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
 2026-03-05 05:23:23,934 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:24:23,941 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 44.3MB
+2026-03-05 05:25:23,944 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 05:26:23,951 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 05:27:23,962 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:28:23,965 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:29:23,973 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:30:23,982 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:31:23,992 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:32:24,000 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:33:24,002 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:34:24,012 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:35:24,022 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:36:24,027 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:37:24,039 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:38:24,050 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:39:24,059 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:40:24,064 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:41:24,075 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:42:24,081 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:43:24,093 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:44:24,104 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:45:24,115 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:46:24,123 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:47:24,132 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:48:24,144 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:49:24,155 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:50:24,161 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 05:51:24,173 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 05:52:24,180 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 05:53:24,188 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:54:24,192 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 05:55:24,201 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 05:56:24,208 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 05:57:24,209 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:58:24,220 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 05:59:24,222 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:00:24,233 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:01:24,241 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:02:24,243 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:03:24,253 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:04:24,260 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:05:24,271 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:06:24,282 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:07:24,291 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:08:24,302 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:09:24,309 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:10:24,316 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:11:24,328 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:12:24,339 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:13:24,346 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:14:24,358 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:15:24,360 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:16:24,365 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:17:24,368 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:18:24,376 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:19:24,378 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:20:24,390 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:21:24,395 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:22:24,405 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.0MB
+2026-03-05 06:23:20,662 - INFO - Starting AI Security Guardian...
+2026-03-05 06:23:20,662 - INFO - Directory exists: /Users/neillu/Desktop/AI_Security_Guardian/logs
+2026-03-05 06:23:20,663 - INFO - Configuration loaded successfully.
+2026-03-05 06:23:20,663 - INFO - Clipboard Monitor started.
+2026-03-05 06:23:20,663 - INFO - Active Window Monitor (Visual Sentry) started.
+2026-03-05 06:23:20,663 - INFO - Keystroke Monitor (Terminal Rules) started.
+2026-03-05 06:23:20,664 - INFO - Network Monitor started (using lsof fallback).
+2026-03-05 06:23:20,664 - INFO - System Heartbeat started.
+2026-03-05 06:23:20,664 - INFO - AI Security Guardian is now monitoring the system. (Modules initialized)
+2026-03-05 06:23:20,666 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.0% | MEM: 65.1MB
+2026-03-05 06:24:20,678 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 55.1MB
+2026-03-05 06:25:20,683 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.7MB
+2026-03-05 06:26:20,694 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 55.8MB
+2026-03-05 06:27:20,699 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 55.8MB
+2026-03-05 06:28:20,710 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.8MB
+2026-03-05 06:29:20,718 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.8MB
+2026-03-05 06:30:20,730 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:31:20,742 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:32:20,751 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.8MB
+2026-03-05 06:33:20,763 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:34:20,786 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:35:20,798 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:36:20,806 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 55.9MB
+2026-03-05 06:37:20,817 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 45.0MB
+2026-03-05 06:38:20,820 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:39:20,831 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:40:20,842 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:41:20,848 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:42:20,856 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:43:20,864 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:44:20,874 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:45:20,878 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:46:20,880 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:47:20,891 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:48:20,903 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:49:20,914 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:50:20,924 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:51:20,930 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 06:52:20,937 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.1MB
+2026-03-05 06:53:20,947 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.2MB
+2026-03-05 06:54:20,955 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.8MB
+2026-03-05 06:55:20,958 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.0MB
+2026-03-05 06:56:20,962 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.0MB
+2026-03-05 06:57:20,966 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.0MB
+2026-03-05 06:58:20,972 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 06:59:20,975 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:00:20,986 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:01:20,997 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:02:21,002 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:03:21,008 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.2MB
+2026-03-05 07:04:21,018 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:05:21,030 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.1MB
+2026-03-05 07:06:21,040 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 46.2MB
+2026-03-05 07:07:21,044 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:08:21,048 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:09:21,053 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:10:21,062 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:11:21,069 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:12:21,080 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:13:21,083 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:14:21,095 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:15:21,107 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:16:21,118 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:17:21,123 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:18:21,129 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.2MB
+2026-03-05 07:19:21,139 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:20:21,147 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:21:21,159 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:22:21,163 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.3MB
+2026-03-05 07:23:20,829 - INFO - Verification snapshot saved: sprint_verify_20260305_0723.png
+2026-03-05 07:23:21,175 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.5% | MEM: 47.1MB
+2026-03-05 07:24:21,181 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.7% | MEM: 47.2MB
+2026-03-05 07:25:21,188 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:26:21,195 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:27:21,201 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:28:21,204 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:29:21,210 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:30:21,212 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:31:21,223 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:32:21,227 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:33:21,234 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:34:21,245 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 47.2MB
+2026-03-05 07:35:21,257 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:36:21,264 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:37:21,266 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:38:21,278 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:39:21,287 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 47.2MB
+2026-03-05 07:40:21,299 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:41:21,308 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:42:21,318 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:43:21,330 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:44:21,340 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.3MB
+2026-03-05 07:45:21,348 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.3MB
+2026-03-05 07:46:21,352 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:47:21,364 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:48:21,372 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 47.2MB
+2026-03-05 07:49:21,381 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:50:21,389 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:51:21,398 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:52:21,404 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 47.2MB
+2026-03-05 07:53:21,415 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 45.5MB
+2026-03-05 07:53:47,263 - INFO - Starting AI Security Guardian...
+2026-03-05 07:53:47,263 - INFO - Directory exists: /Users/neillu/Desktop/AI_Security_Guardian/logs
+2026-03-05 07:53:47,265 - INFO - Configuration loaded successfully.
+2026-03-05 07:53:47,265 - INFO - Clipboard Monitor started.
+2026-03-05 07:53:47,265 - INFO - Active Window Monitor (Visual Sentry) started.
+2026-03-05 07:53:47,265 - INFO - Keystroke Monitor (Terminal Rules) started.
+2026-03-05 07:53:47,265 - INFO - Network Monitor started (using lsof fallback).
+2026-03-05 07:53:47,268 - INFO - System Heartbeat started.
+2026-03-05 07:53:47,268 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.0% | MEM: 65.8MB
+2026-03-05 07:53:47,268 - INFO - AI Security Guardian is now monitoring the system. (Modules initialized)
+2026-03-05 07:54:47,279 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.5MB
+2026-03-05 07:55:47,290 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.5MB
+2026-03-05 07:56:47,296 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.6MB
+2026-03-05 07:57:47,308 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.6MB
+2026-03-05 07:58:47,316 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.7MB
+2026-03-05 07:59:47,327 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.7MB
+2026-03-05 08:00:47,335 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.7MB
+2026-03-05 08:01:47,347 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.7MB
+2026-03-05 08:02:47,358 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.7MB
+2026-03-05 08:03:47,365 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.8MB
+2026-03-05 08:04:47,367 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.8MB
+2026-03-05 08:05:47,377 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.8MB
+2026-03-05 08:06:47,388 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.8MB
+2026-03-05 08:07:47,399 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 71.8MB
+2026-03-05 08:08:47,408 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.6MB
+2026-03-05 08:09:47,415 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.7MB
+2026-03-05 08:10:47,420 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.7MB
+2026-03-05 08:11:47,429 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.7MB
+2026-03-05 08:12:47,435 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.7MB
+2026-03-05 08:13:47,446 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.7MB
+2026-03-05 08:14:47,458 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.8MB
+2026-03-05 08:15:47,467 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.8MB
+2026-03-05 08:16:47,476 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.8MB
+2026-03-05 08:17:47,487 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.9MB
+2026-03-05 08:18:47,496 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.9MB
+2026-03-05 08:19:47,508 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.9MB
+2026-03-05 08:20:47,514 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.4% | MEM: 51.9MB
+2026-03-05 08:21:47,525 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.9MB
+2026-03-05 08:22:47,535 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 51.9MB
+2026-03-05 08:23:47,547 - INFO - Guardian status: Running [Modules: 4] | CPU: 0.3% | MEM: 52.4MB
