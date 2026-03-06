@@ -2,11 +2,11 @@ import json
 import logging
 from pathlib import Path
 
-logger = logging.getLogger('AI_Guardian')
+logger = logging.getLogger('Aegis_Guardian')
 
 class I18nManager:
     """
-    Internationalization Manager for AI Security Guardian.
+    Internationalization Manager for Aegis Guardian.
     Loads language string packs from locales/ directory.
     """
     def __init__(self, language="zh-TW"):

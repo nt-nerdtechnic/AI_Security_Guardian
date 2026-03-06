@@ -32,10 +32,9 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(LOGS_DIR / 'guardian.log', mode='a') if LOGS_DIR.exists() else logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('AI_Guardian')
+logger = logging.getLogger('Aegis_Guardian')
 
 def ensure_environment():
     """確保必要的目錄（如 logs/）存在"""
@@ -489,7 +488,7 @@ class NetworkMonitor(threading.Thread):
 # Main Event Loop
 # ============================================================================
 def main():
-    logger.info("Starting AI Security Guardian...") # Will be overwritten by i18n after config load, but keep it initial if config missing
+    logger.info("Starting Aegis Guardian...") # Will be overwritten by i18n after config load, but keep it initial if config missing
     ensure_environment()
     
     config = load_config()

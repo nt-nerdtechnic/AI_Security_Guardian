@@ -86,7 +86,7 @@ function App() {
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <Shield className="text-emerald-500 w-8 h-8" />
-          <h1 className="text-2xl font-bold tracking-tight">AI Security Guardian</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Aegis Guardian</h1>
         </div>
         <div className="flex items-center space-x-2 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-800 shadow-lg shadow-emerald-500/5">
           <div className={`w-2 h-2 rounded-full animate-pulse ${mode === 'Strict Blocking' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'}`} />
@@ -112,7 +112,7 @@ function App() {
       <div className="text-[9px] text-slate-700 font-bold uppercase tracking-[0.3em] text-center pt-2 flex items-center justify-center space-x-4">
         <span>Autonomous R&D Unit</span>
         <span className="w-1 h-1 bg-slate-800 rounded-full" />
-        <span className="text-slate-600 italic">v0.1.6-UI-Sprint-Enhanced</span>
+        <span className="text-slate-600 italic">v1.1.0-Aegis</span>
         <span className="w-1 h-1 bg-slate-800 rounded-full" />
         <span>NerdTechnic</span>
       </div>

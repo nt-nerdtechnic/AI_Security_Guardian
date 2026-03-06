@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Globe, ShieldAlert } from 'lucide-react';
+import FileIntegrityAlerts from './FileIntegrityAlerts';
 
 const ActivityDashboard = ({ stats }) => {
   const [exposedPorts, setExposedPorts] = useState([]);
@@ -39,7 +41,7 @@ const ActivityDashboard = ({ stats }) => {
         />
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow overflow-hidden">
           {/* Left: System Status */}
           <div className="bg-slate-900/40 rounded-3xl border border-slate-800/60 p-8 flex flex-col relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-32 -mt-32 opacity-50" />
@@ -85,11 +87,21 @@ const ActivityDashboard = ({ stats }) => {
                 {exposedPorts.length > 0 ? (
                     exposedPorts.map((item, index) => (
                         <div key={`${item.port}-${index}`} className={`flex justify-between items-center p-3 border rounded-xl ${item.is_risky ? 'bg-red-500/5 border-red-500/20' : 'bg-slate-800/30 border-slate-700/50'}`}>
-                            <div className="flex flex-col">
-                                <span className={`text-xs font-mono ${item.is_risky ? 'text-red-400' : 'text-slate-300'}`}>Port {item.port}</span>
-                                {item.process_name && <span className="text-[10px] text-slate-400 font-mono mt-1">{item.process_name} (PID: {item.pid})</span>}
+                            <div className="flex items-center space-x-3">
+                                {item.is_risky ? (
+                                    <ShieldAlert className="w-4 h-4 text-red-500/80" />
+                                ) : (
+                                    <Globe className="w-4 h-4 text-slate-400" />
+                                )}
+                                <div className="flex flex-col">
+                                    <span className={`text-xs font-mono ${item.is_risky ? 'text-red-400' : 'text-slate-300'}`}>
+                                        {item.port} &rarr; {item.process_name || 'Unknown'} <span className="text-[10px] text-slate-500">(PID: {item.pid})</span>
+                                    </span>
+                                </div>
                             </div>
-                            <span className={`text-[9px] font-bold uppercase ${item.is_risky ? 'text-red-500/60' : 'text-slate-500'}`}>Exposed</span>
+                            <span className={`text-[9px] font-bold uppercase ${item.is_risky ? 'text-red-500/60' : 'text-emerald-500/60'}`}>
+                                {item.is_risky ? 'Exposed' : 'Listening'}
+                            </span>
                         </div>
                     ))
                 ) : (
@@ -100,6 +112,9 @@ const ActivityDashboard = ({ stats }) => {
                 )}
             </div>
           </div>
+
+          {/* Right: File Integrity Alerts (v1.0.9 Feature) */}
+          <FileIntegrityAlerts />
       </div>
     </div>
   );

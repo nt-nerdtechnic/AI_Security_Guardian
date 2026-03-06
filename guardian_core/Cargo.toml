@@ -1,6 +1,6 @@
 [package]
 name = "guardian_core"
-version = "0.1.0"
+version = "1.0.7"
 edition = "2021"
 
 [dependencies]
@@ -13,3 +13,4 @@ arboard = "3.4.1"
 regex = "1.10"
 sha2 = "0.10"
 hex = "0.4"
+serde_yaml = "0.9"

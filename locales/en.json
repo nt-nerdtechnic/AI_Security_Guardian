@@ -1,5 +1,5 @@
 {
-  "system_starting": "Starting AI Security Guardian...",
+  "system_starting": "Starting Aegis Guardian...",
   "config_not_found": "Cannot proceed without configuration. Exiting.",
   "config_loaded": "Configuration loaded successfully.",
   "clipboard_monitor_started": "Clipboard Monitor started.",
@@ -30,6 +30,6 @@
   "terminal_capture_failed": "Failed to capture terminal proof: {error}",
   "resource_cpu_high": "⚠️ [RESOURCE WATCH] High CPU usage detected: {cpu}%",
   "network_monitor_error": "Error in Network Monitor (lsof): {error}",
-  "shutdown_gracefully": "Shutting down AI Security Guardian gracefully...",
+  "shutdown_gracefully": "Shutting down Aegis Guardian gracefully...",
   "unexpected_error": "Unexpected error: {error}"
 }

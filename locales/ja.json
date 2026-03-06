@@ -1,5 +1,5 @@
 {
-  "system_starting": "AI Security Guardian を起動しています...",
+  "system_starting": "Aegis Guardian を起動しています...",
   "config_not_found": "設定ファイルが見つかりません。終了します。",
   "config_loaded": "設定ファイルを読み込みました。",
   "clipboard_monitor_started": "クリップボード監視を開始しました。",
@@ -30,6 +30,6 @@
   "terminal_capture_failed": "ターミナルのスナップショットの取得に失敗しました：{error}",
   "resource_cpu_high": "⚠️ [リソース監視] 高いCPU使用率を検出しました：{cpu}%",
   "network_monitor_error": "ネットワーク監視のエラー (lsof)：{error}",
-  "shutdown_gracefully": "AI Security Guardian を正常にシャットダウンしています...",
+  "shutdown_gracefully": "Aegis Guardian を正常にシャットダウンしています...",
   "unexpected_error": "予期せぬエラー：{error}"
 }

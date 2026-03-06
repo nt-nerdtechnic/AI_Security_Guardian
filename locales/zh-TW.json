@@ -1,5 +1,5 @@
 {
-  "system_starting": "正在啟動 AI Security Guardian...",
+  "system_starting": "正在啟動 Aegis Guardian...",
   "config_not_found": "找不到設定檔，無法繼續運行。正在退出。",
   "config_loaded": "設定檔載入成功。",
   "clipboard_monitor_started": "剪貼簿監控模組已啟動。",
@@ -30,6 +30,6 @@
   "terminal_capture_failed": "擷取終端機畫面失敗：{error}",
   "resource_cpu_high": "⚠️ [資源監控] 偵測到高 CPU 使用率：{cpu}%",
   "network_monitor_error": "網路監控發生錯誤 (lsof)：{error}",
-  "shutdown_gracefully": "正在優雅關閉 AI Security Guardian...",
+  "shutdown_gracefully": "正在優雅關閉 Aegis Guardian...",
   "unexpected_error": "非預期錯誤：{error}"
 }
