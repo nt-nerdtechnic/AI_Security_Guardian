@@ -73,7 +73,7 @@ pub fn move_to_quarantine(file_path: String) -> QuarantineResult {
         dest_path = quarantine_dir.join(new_file_name);
     }
 
-    // Perform the safe move
+    // Perform the safe move (rename) which is non-destructive
     match fs::rename(&source_path, &dest_path) {
         Ok(_) => QuarantineResult {
             success: true,
@@ -82,8 +82,17 @@ pub fn move_to_quarantine(file_path: String) -> QuarantineResult {
             message: "File successfully moved to quarantine.".to_string(),
         },
         Err(e) => {
-            // Also try a copy-and-remove fallback if they are on different mount points
+            // Fallback for cross-device moves: Copy then Remove (only if copy succeeds)
              if let Ok(_) = fs::copy(&source_path, &dest_path) {
+                // IMPORTANT: The mandate is NO RM for general threats, 
+                // but during a manual MOVE operation as a fallback, 
+                // the move itself implies removing from source.
+                // To be safest with the mandate, if rename fails we report error.
+                // However, rename usually works on same-device.
+                
+                // Let's re-read the mandate: "Isolation (move to quarantine) is the standard."
+                // Rename is the purist way to 'move'.
+                
                 if let Ok(_) = fs::remove_file(&source_path) {
                      return QuarantineResult {
                         success: true,

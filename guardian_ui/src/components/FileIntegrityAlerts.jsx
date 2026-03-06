@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { FileCheck, AlertTriangle, ShieldCheck, Info } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { FileCheck, AlertTriangle, ShieldCheck, Info } from 'lucide-react';
 
 const FileIntegrityAlerts = () => {
     const [alerts, setAlerts] = useState([]);
 
     useEffect(() => {
+        const fetchAlerts = async () => {
+            try {
+                const data = await invoke('check_file_integrity');
+                setAlerts(data);
+            } catch (e) {
+                console.error("Failed to fetch file integrity", e);
+            }
+        };
+
         fetchAlerts();
         const interval = setInterval(fetchAlerts, 10000);
         return () => clearInterval(interval);
     }, []);
-
-    const fetchAlerts = async () => {
-        try {
-            const data = await invoke('check_file_integrity');
-            setAlerts(data);
-        } catch (e) {
-            console.error("Failed to fetch file integrity", e);
-        }
-    };
 
     const formatTime = (timestamp) => {
         if (timestamp === "N/A" || !timestamp) return "N/A";
@@ -75,16 +75,18 @@ const FileIntegrityAlerts = () => {
                                 <button 
                                     onClick={async () => {
                                         try {
-                                            const res = await invoke('move_to_quarantine', { filePath: alert.file_path });
+                                            const res = await invoke('move_to_quarantine', { file_path: alert.file_path });
                                             console.log("Quarantine result:", res);
-                                            fetchAlerts();
+                                            // Trigger refresh
+                                            const data = await invoke('check_file_integrity');
+                                            setAlerts(data);
                                         } catch (err) {
                                             console.error("Failed to quarantine file:", err);
                                         }
                                     }}
                                     className="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded text-[10px] font-bold text-amber-500 uppercase tracking-wider transition-colors"
                                 >
-                                    Quarantine
+                                    Deny (Quarantine)
                                 </button>
                                 <button 
                                     onClick={() => {

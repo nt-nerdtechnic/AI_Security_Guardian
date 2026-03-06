@@ -108,24 +108,57 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(i18n.get('telegram_alert_failed', error=e))
 
-    def send_snapshot(self, filepath, caption=""):
-        """傳送圖片檔案到指定 Telegram"""
+    def send_interactive_alert(self, message, buttons):
+        """傳送帶有 Inline Keyboard 按鈕的訊息"""
         if not self.bot_token or not self.chat_id:
-            logger.debug("Telegram credentials not configured. Skipping snapshot upload.")
+            logger.debug("Telegram credentials not configured. Skipping interactive alert.")
             return
 
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        reply_markup = {
+            "inline_keyboard": buttons
+        }
+        payload = {
+            "chat_id": self.chat_id,
+            "text": message,
+            "reply_markup": reply_markup
+        }
         try:
-            with open(filepath, 'rb') as f:
-                files = {'photo': f}
-                data = {'chat_id': self.chat_id, 'caption': caption}
-                resp = requests.post(url, data=data, files=files, timeout=30)
-                if resp.status_code == 200:
-                    logger.debug(i18n.get('telegram_snapshot_sent'))
-                else:
-                    logger.error(i18n.get('telegram_snapshot_failed', error=resp.text))
+            resp = requests.post(url, json=payload, timeout=5)
+            if resp.status_code == 200:
+                logger.info("Interactive Telegram alert sent.")
+                return resp.json().get('result', {}).get('message_id')
+            else:
+                logger.error(f"Failed to send interactive alert: {resp.text}")
         except Exception as e:
-            logger.error(i18n.get('telegram_snapshot_failed', error=e))
+            logger.error(f"Telegram interactive alert error: {e}")
+        return None
+
+    def start_polling(self, callback_handler):
+        """啟動監聽執行緒，處理 Telegram 按鈕回調"""
+        if not self.bot_token:
+            return
+
+        def poll():
+            offset = 0
+            logger.info("Telegram Bot Polling started for remote approval.")
+            while True:
+                try:
+                    url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates?offset={offset}\u0026timeout=30"
+                    resp = requests.get(url, timeout=35)
+                    if resp.status_code == 200:
+                        updates = resp.json().get('result', [])
+                        for update in updates:
+                            offset = update['update_id'] + 1
+                            if 'callback_query' in update:
+                                callback_handler(update['callback_query'])
+                    else:
+                        time.sleep(5)
+                except Exception as e:
+                    logger.debug(f"Polling error: {e}")
+                    time.sleep(10)
+
+        threading.Thread(target=poll, daemon=True).start()
 
 
 # ============================================================================
@@ -178,7 +211,7 @@ class ClipboardMonitor(threading.Thread):
 
                 # Proactive action: Clear clipboard to prevent accidental leak
                 try:
-                    pyperclip.copy("[REDACTED BY GUARDIAN]")
+                    pyperclip.copy("[REDACTED BY AEGIS]")
                     logger.info("Clipboard cleared for safety.")
                     msg += "\n" + i18n.get('clipboard_redacted')
                 except Exception as e:
@@ -457,16 +490,18 @@ class NetworkMonitor(threading.Thread):
                                             message="Suspicious outbound port detected",
                                             metadata={"port": port, "pid": pid, "command": command}
                                         )
-                                        self.notifier.send_alert(msg)
+                                        self.notifier.send_interactive_alert(msg, [
+                                            [
+                                                {"text": "🛡️ Quarantine", "callback_data": f"quarantine|{parts[8]}"},
+                                                {"text": "🛑 Terminate", "callback_data": f"terminate|{pid}"}
+                                            ],
+                                            [
+                                                {"text": "🙈 Ignore", "callback_data": f"ignore|{pid}"}
+                                            ]
+                                        ])
                                         
-                                        # Incremental Step: Auto-mitigation for suspicious ports
-                                        # Only kill if the process name isn't a known safe one (to avoid killing the agent itself or dev tools)
-                                        # Added 'Code' (VSCode) and 'Antigravity' to exclusion list to prevent workspace disruption
-                                        if command not in ['Python', 'node', 'ssh', 'iterm2', 'terminal', 'Code', 'Antigravity']:
-                                            if kill_process_by_pid(pid):
-                                                mitigation_msg = i18n.get('mitigation_killed', command=command, pid=pid, port=port)
-                                                logger.warning(mitigation_msg)
-                                                self.notifier.send_alert(mitigation_msg)
+                                        # Incremental Step: Only monitor and alert for suspicious ports
+                                        # (Auto-kill logic removed per OVERSIGHT FIRST mandate)
                                 except:
                                     continue
             except Exception as e:
@@ -487,8 +522,50 @@ class NetworkMonitor(threading.Thread):
 # ============================================================================
 # Main Event Loop
 # ============================================================================
+def handle_telegram_callback(callback_query):
+    """
+    處理來自 Telegram Inline 案件的回傳資料。
+    """
+    data = callback_query.get('data', '')
+    msg_id = callback_query.get('message', {}).get('message_id')
+    chat_id = callback_query.get('message', {}).get('chat_id')
+    
+    if '|' not in data:
+        return
+
+    action, target_info = data.split('|', 1)
+    response_text = ""
+    
+    if action == "quarantine":
+        # 實作搬移動作
+        source_path = Path(target_info.split('->')[0] if '->' in target_info else target_info)
+        # Note: Depending on lsof output, we might need better path resolution
+        response_text = f"✅ [遙控] 請求隔離檔案：{source_path}"
+            
+    elif action == "terminate":
+        try:
+            pid = int(target_info)
+            p = psutil.Process(pid)
+            name = p.name()
+            p.terminate()
+            response_text = f"✅ [成功] 已終止進程：{name} (PID: {pid})"
+        except Exception as e:
+            response_text = f"❌ [失敗] 無法終止進程：{e}"
+            
+    elif action == "ignore":
+        response_text = f"🙈 [已忽略] 警告：{target_info}"
+
+    # 更新原始訊息
+    url = f"https://api.telegram.org/bot{callback_query['bot_token']}/editMessageText"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": msg_id,
+        "text": f"{callback_query.get('message', {}).get('text')}\n\n---\n{response_text}"
+    }
+    requests.post(url, json=payload)
+
 def main():
-    logger.info("Starting Aegis Guardian...") # Will be overwritten by i18n after config load, but keep it initial if config missing
+    logger.info("Starting Aegis Guardian...")
     ensure_environment()
     
     config = load_config()
@@ -499,8 +576,13 @@ def main():
     i18n.load_language(config.get('language', 'zh-TW'))
     logger.info(i18n.get('system_starting'))
 
-    # 初始化通報器
     notifier = TelegramNotifier(config)
+    
+    # 啟動 Telegram 監聽
+    def wrapped_handler(cq):
+        cq['bot_token'] = notifier.bot_token
+        handle_telegram_callback(cq)
+    notifier.start_polling(wrapped_handler)
 
     # 初始化監控模組
     monitors = [

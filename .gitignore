@@ -1,5 +1,6 @@
 # Rust
-/target/
+target/
+**/target/
 **/*.rs.bk
 Cargo.lock
 
@@ -30,5 +31,10 @@ src-tauri/gen/
 # Release Artifacts
 guardian_ui_release_*
 guardian_core_release_*
+guardian_core_debug
 *.dmg
 *.app
+*.spec
+
+# Mission files
+mission_sprint.txt

@@ -1,4 +1,5 @@
 mod os_agnostic;
+pub mod quarantine;
 mod interceptor;
 
 use std::time::Duration;
@@ -24,8 +25,8 @@ pub struct Incident {
 #[tokio::main]
 async fn main() {
     let sys_info = SystemInfo::new();
-    println!("🛡️ [Rust Kernel] Guardian Core Started on {} ({})", sys_info.hostname, sys_info.os_name);
-    println!("🛡️ [Rust Kernel] Prepared to load Python-Brain via PyO3.");
+    println!("🛡️ [Rust Kernel] Aegis Guardian Core Started on {} ({})", sys_info.hostname, sys_info.os_name);
+    println!("🛡️ [Rust Kernel] Prepared to load Aegis-Brain via PyO3.");
 
     // Attempt to initialize Clipboard Monitor
     let clipboard_monitor = match ClipboardMonitor::new() {
