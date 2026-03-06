@@ -1,0 +1,34 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Node.js
+node_modules/
+dist/
+.eslintcache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# macOS
+.DS_Store
+
+# Logs
+logs/*.log
+logs/*.png
+logs/incidents.json
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Release Artifacts
+guardian_ui_release_*
+guardian_core_release_*
+*.dmg
+*.app

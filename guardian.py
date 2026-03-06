@@ -13,6 +13,10 @@ from datetime import datetime
 from pathlib import Path
 from pynput import keyboard
 from guardian_core.actions.mitigation import kill_process_by_pid
+from guardian_core.i18n import I18nManager
+
+# 建立全域的 I18nManager 實例（預設 zh-TW，稍後在 main 中依設定變更）
+i18n = I18nManager('zh-TW')
 
 # ============================================================================
 # Core Configuration
@@ -40,9 +44,9 @@ def ensure_environment():
         # 移除舊的未配置好的 FileHandler，替換為新的
         logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.FileHandler)]
         logger.addHandler(logging.FileHandler(LOGS_DIR / 'guardian.log', mode='a'))
-        logger.info(f"Directory created: {LOGS_DIR}")
+        logger.info(i18n.get('log_dir_created', path=LOGS_DIR))
     else:
-        logger.info(f"Directory exists: {LOGS_DIR}")
+        logger.info(i18n.get('log_dir_exists', path=LOGS_DIR))
 
 def record_incident(module, severity, message, metadata=None):
     """
@@ -61,18 +65,18 @@ def record_incident(module, severity, message, metadata=None):
         with open(INCIDENTS_JSON, "a", encoding="utf-8") as f:
             f.write(json.dumps(incident, ensure_ascii=False) + "\n")
     except Exception as e:
-        logger.error(f"Failed to record incident to JSON: {e}")
+        logger.error(i18n.get('record_incident_failed', error=e))
 
 def load_config():
     """載入 config.yaml 設定檔"""
     if not CONFIG_FILE.exists():
-        logger.error(f"Configuration file not found: {CONFIG_FILE}")
+        logger.error(i18n.get('config_not_found'))
         return None
 
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
-            logger.info("Configuration loaded successfully.")
+            logger.info(i18n.get('config_loaded'))
             return config
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
@@ -99,11 +103,11 @@ class TelegramNotifier:
         try:
             resp = requests.post(url, json=payload, timeout=5)
             if resp.status_code == 200:
-                logger.debug("Telegram alert sent successfully.")
+                logger.debug(i18n.get('telegram_alert_sent'))
             else:
-                logger.error(f"Failed to send Telegram alert: {resp.text}")
+                logger.error(i18n.get('telegram_alert_failed', error=resp.text))
         except Exception as e:
-            logger.error(f"Telegram webhook exception: {e}")
+            logger.error(i18n.get('telegram_alert_failed', error=e))
 
     def send_snapshot(self, filepath, caption=""):
         """傳送圖片檔案到指定 Telegram"""
@@ -118,11 +122,11 @@ class TelegramNotifier:
                 data = {'chat_id': self.chat_id, 'caption': caption}
                 resp = requests.post(url, data=data, files=files, timeout=30)
                 if resp.status_code == 200:
-                    logger.debug("Telegram snapshot sent successfully.")
+                    logger.debug(i18n.get('telegram_snapshot_sent'))
                 else:
-                    logger.error(f"Failed to send Telegram snapshot: {resp.text}")
+                    logger.error(i18n.get('telegram_snapshot_failed', error=resp.text))
         except Exception as e:
-            logger.error(f"Telegram photo webhook exception: {e}")
+            logger.error(i18n.get('telegram_snapshot_failed', error=e))
 
 
 # ============================================================================
@@ -143,7 +147,7 @@ class ClipboardMonitor(threading.Thread):
         self.running = True
 
     def run(self):
-        logger.info("Clipboard Monitor started.")
+        logger.info(i18n.get('clipboard_monitor_started'))
         while self.running:
             try:
                 current_content = pyperclip.paste()
@@ -151,7 +155,7 @@ class ClipboardMonitor(threading.Thread):
                     self.check_content(current_content)
                     self.last_content = current_content
             except Exception as e:
-                logger.error(f"Error in Clipboard Monitor: {e}")
+                logger.error(i18n.get('clipboard_monitor_error', error=e))
             
             time.sleep(1)
 
@@ -161,7 +165,7 @@ class ClipboardMonitor(threading.Thread):
 
         for rule_name, pattern in self.rules.items():
             if re.search(pattern, content):
-                msg = f"⚠️ [SECURITY ALERT] Sensitive data detected in clipboard ({rule_name})!"
+                msg = i18n.get('clipboard_alert', rule_name=rule_name)
                 logger.warning(msg)
                 print(f"\n{msg}")
                 
@@ -177,9 +181,9 @@ class ClipboardMonitor(threading.Thread):
                 try:
                     pyperclip.copy("[REDACTED BY GUARDIAN]")
                     logger.info("Clipboard cleared for safety.")
-                    msg += "\n🛡️ Action taken: Clipboard has been REDACTED."
+                    msg += "\n" + i18n.get('clipboard_redacted')
                 except Exception as e:
-                    logger.error(f"Failed to clear clipboard: {e}")
+                    logger.error(i18n.get('clipboard_clear_failed', error=e))
                 
                 self.notifier.send_alert(msg)
 
@@ -222,7 +226,7 @@ class ActiveWindowMonitor(threading.Thread):
     def take_snapshot(self, trigger_name):
         current_time = time.time()
         if current_time - self.last_snapshot_time < self.cooldown:
-            logger.debug(f"Snapshot cooldown active for {trigger_name}. Skipping.")
+            logger.debug(i18n.get('visual_snapshot_cooldown', trigger_name=trigger_name))
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -232,7 +236,7 @@ class ActiveWindowMonitor(threading.Thread):
             subprocess.run(['screencapture', '-x', str(filepath)], check=True)
             self.last_snapshot_time = current_time
             
-            msg = f"📸 [VISUAL SENTRY] Privilege window detected ({trigger_name}). Snapshot saved: {filepath.name}"
+            msg = i18n.get('visual_alert', trigger_name=trigger_name, filename=filepath.name)
             logger.warning(msg)
             print(f"\n{msg}")
 
@@ -247,10 +251,10 @@ class ActiveWindowMonitor(threading.Thread):
             # Auto-send file via Telegram if configured
             self.notifier.send_snapshot(filepath, msg)
         except Exception as e:
-            logger.error(f"Failed to take snapshot: {e}")
+            logger.error(i18n.get('visual_snapshot_failed', error=e))
 
     def run(self):
-        logger.info("Active Window Monitor (Visual Sentry) started.")
+        logger.info(i18n.get('visual_monitor_started'))
         while self.running:
             try:
                 app_name, window_title = self.get_frontmost_info()
@@ -266,7 +270,7 @@ class ActiveWindowMonitor(threading.Thread):
                 # If app is same, we don't re-trigger snapshot to avoid title-change spam
                     
             except Exception as e:
-                logger.error(f"Error in Active Window Monitor: {e}")
+                logger.error(i18n.get('visual_monitor_error', error=e))
             time.sleep(2.0)
 
     def stop(self):
@@ -321,7 +325,7 @@ class KeystrokeMonitor(threading.Thread):
                 # 簡單字串比對：高風險詞彙檢查
                 for kw in self.high_risk_keywords:
                     if kw in cmd:
-                        msg = f"🛑 [TERMINAL FIREWALL] High risk command detected: '{cmd}' (matched '{kw}')"
+                        msg = i18n.get('terminal_alert', command=cmd, keyword=kw)
                         logger.warning(msg)
                         print(f"\n{msg}")
 
@@ -344,14 +348,14 @@ class KeystrokeMonitor(threading.Thread):
                                 subprocess.run(['screencapture', '-x', str(filepath)], check=True)
                                 self.notifier.send_snapshot(filepath, f"🚨 {msg}")
                             except Exception as e:
-                                logger.error(f"Failed to capture terminal proof: {e}")
+                                logger.error(i18n.get('terminal_capture_failed', error=e))
 
                         self.notifier.send_alert(msg)
         except Exception as e:
             pass
 
     def run(self):
-        logger.info("Keystroke Monitor (Terminal Rules) started.")
+        logger.info(i18n.get('terminal_monitor_started'))
         with keyboard.Listener(on_press=self.on_press) as self.listener:
             while self.running:
                 time.sleep(1)
@@ -372,7 +376,7 @@ class SystemHeartbeat(threading.Thread):
         self.running = True
 
     def run(self):
-        logger.info("System Heartbeat started.")
+        logger.info(i18n.get('heartbeat_started'))
         process = psutil.Process(os.getpid())
         while self.running:
             active_modules = [m.__class__.__name__ for m in self.monitors if m.is_alive()]
@@ -382,7 +386,7 @@ class SystemHeartbeat(threading.Thread):
             cpu_usage = process.cpu_percent(interval=None)
             mem_mb = mem_info.rss / 1024 / 1024
             
-            status_msg = f"Guardian status: Running [Modules: {len(active_modules)}] | CPU: {cpu_usage}% | MEM: {mem_mb:.1f}MB"
+            status_msg = i18n.get('heartbeat_status', module_count=len(active_modules), cpu=cpu_usage, mem=round(mem_mb, 1))
             logger.info(status_msg)
             
             # Auto-restart/Critical alert logic if thresholds exceeded
@@ -391,12 +395,12 @@ class SystemHeartbeat(threading.Thread):
             MAX_CPU_PERCENT = 80
 
             if mem_mb > MAX_MEM_MB:
-                msg = f"🛑 [SELF-PROTECTION] Critical Memory Leak: {mem_mb:.1f}MB. Initiating Emergency Shutdown."
+                msg = i18n.get('mem_leak_shutdown', mem=round(mem_mb, 1))
                 logger.critical(msg)
                 os._exit(1) # Immediate exit to trigger potential OS-level restart or alert
 
             if cpu_usage > MAX_CPU_PERCENT:
-                logger.warning(f"⚠️ [RESOURCE WATCH] High CPU usage detected: {cpu_usage}%")
+                logger.warning(i18n.get('resource_cpu_high', cpu=cpu_usage))
                 
             time.sleep(60) # Increased frequency for R&D phase
 
@@ -421,7 +425,7 @@ class NetworkMonitor(threading.Thread):
         self.last_stats = {}
 
     def run(self):
-        logger.info("Network Monitor started (using lsof fallback).")
+        logger.info(i18n.get('network_monitor_started'))
         while self.running:
             try:
                 # 使用 lsof 獲取當前連線，避免 psutil.net_connections 權限問題
@@ -446,7 +450,7 @@ class NetworkMonitor(threading.Thread):
                                 try:
                                     port = int(port_str)
                                     if port in self.suspicious_ports:
-                                        msg = f"🛡️ [NETWORK ALERT] Suspicious port detected via lsof! Port: {port}, Command: {command} (PID: {pid})"
+                                        msg = i18n.get('network_alert', port=port, command=command, pid=pid)
                                         logger.warning(msg)
                                         record_incident(
                                             module="NetworkMonitor",
@@ -461,13 +465,13 @@ class NetworkMonitor(threading.Thread):
                                         # Added 'Code' (VSCode) and 'Antigravity' to exclusion list to prevent workspace disruption
                                         if command not in ['Python', 'node', 'ssh', 'iterm2', 'terminal', 'Code', 'Antigravity']:
                                             if kill_process_by_pid(pid):
-                                                mitigation_msg = f"🛡️ [MITIGATION] Process {command} (PID: {pid}) was KILLED due to suspicious activity on port {port}."
+                                                mitigation_msg = i18n.get('mitigation_killed', command=command, pid=pid, port=port)
                                                 logger.warning(mitigation_msg)
                                                 self.notifier.send_alert(mitigation_msg)
                                 except:
                                     continue
             except Exception as e:
-                logger.error(f"Error in Network Monitor (lsof): {e}")
+                logger.error(i18n.get('network_monitor_error', error=e))
             
             time.sleep(self.interval)
 
@@ -485,13 +489,16 @@ class NetworkMonitor(threading.Thread):
 # Main Event Loop
 # ============================================================================
 def main():
-    logger.info("Starting AI Security Guardian...")
+    logger.info("Starting AI Security Guardian...") # Will be overwritten by i18n after config load, but keep it initial if config missing
     ensure_environment()
     
     config = load_config()
     if not config:
-        logger.critical("Cannot proceed without configuration. Exiting.")
         return
+        
+    global i18n
+    i18n.load_language(config.get('language', 'zh-TW'))
+    logger.info(i18n.get('system_starting'))
 
     # 初始化通報器
     notifier = TelegramNotifier(config)
@@ -526,19 +533,19 @@ def main():
 
     threading.Thread(target=periodic_status_capture, daemon=True).start()
 
-    logger.info("AI Security Guardian is now monitoring the system. (Modules initialized)")
+    logger.info(i18n.get('system_starting') + " (Modules initialized)")
     
     try:
         while True:
             time.sleep(1)
             
     except KeyboardInterrupt:
-        logger.info("Shutting down AI Security Guardian gracefully...")
+        logger.info(i18n.get('shutdown_gracefully'))
         for m in monitors:
             m.stop()
         heartbeat.stop()
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
+        logger.error(i18n.get('unexpected_error', error=e), exc_info=True)
 
 
 if __name__ == '__main__':

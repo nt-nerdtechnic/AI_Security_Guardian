@@ -16,7 +16,7 @@ impl ClipboardMonitor {
         // 3. Credit card numbers
         // 4. OpenAI / AWS / Stripe keys
         // 5. Potential email addresses
-        let sensitive_regex = Regex::new(r"(?i)(password|key|secret|token|api_key|private_key|auth_token|access_key|mnemonic|seed_phrase)[=: ]+[a-zA-Z0-9\-_\s]{8,}|-----BEGIN\ (RSA|OPENSSH|DSA|EC)\ PRIVATE\ KEY-----|session_key[=: ]+[a-zA-Z0-9\-_]{16,}|\b(?:\d[ -]*?){13,16}\b|\bsk-[a-zA-Z0-9]{20,}\b|\bAKIA[a-zA-Z0-9]{16}\b|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")?;
+        let sensitive_regex = Regex::new(r"(?i)(password|key|secret|token|api_key|private_key|auth_token|access_key|mnemonic|seed_phrase|credentials|passwd|passphrase)[=: ]+[a-zA-Z0-9\-_\s]{8,}|-----BEGIN\ (RSA|OPENSSH|DSA|EC|PGP|CERTIFICATE|PRIVATE|ENCRYPTED)\ (PRIVATE\ KEY|MESSAGE|PUBLIC\ KEY|CERTIFICATE)-----|session_key[=: ]+[a-zA-Z0-9\-_]{16,}|\b(?:\d[ -]*?){13,16}\b|\bsk-[a-zA-Z0-9]{20,}\b|\bAKIA[a-zA-Z0-9]{16}\b|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")?;
         
         Ok(Self {
             clipboard: Arc::new(Mutex::new(clipboard)),
