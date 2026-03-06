@@ -1,0 +1,16 @@
+Fri Mar  6 09:23:55 CST 2026
+---
+warning: field `os_version` is never read
+ --> src/os_agnostic/mod.rs:4:9
+  |
+1 | pub struct SystemInfo {
+  |            ---------- field in this struct
+...
+4 |     pub os_version: String,
+  |         ^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `guardian_core` (bin "guardian_core") generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.04s
+Build Finished.

@@ -8,6 +8,10 @@ behavior_firewall:
     jwt_token: 'eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'
     # 範例：偵測可能有問題的密碼格式 (此處以單純的長度或複雜度為主，建議依需求調整)
     password_hint: '(?i)(password|passwd|pwd)\s*=\s*[\w@#%&]+'
+    # 範例：偵測 OpenAI API Key
+    openai_key: 'sk-[a-zA-Z0-9]{20,}'
+    # 範例：偵測 Stripe API Key
+    stripe_key: 'sk_live_[a-zA-Z0-9]{24}'
     # 範例：偵測 Google Cloud API Key
     gcp_api_key: 'AIza[0-9A-Za-z-_]{35}'
 
