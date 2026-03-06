@@ -12,7 +12,7 @@ impl QuarantineManager {
         // Construct the quarantine directory path
         let quarantine_dir = dirs::desktop_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("AI_Security_Guardian")
+            .join("Aegis_Guardian")
             .join("quarantine");
 
         // Ensure the directory exists

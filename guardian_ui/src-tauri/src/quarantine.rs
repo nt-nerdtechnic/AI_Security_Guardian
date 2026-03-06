@@ -35,7 +35,7 @@ pub fn move_to_quarantine(file_path: String) -> QuarantineResult {
         }
     };
 
-    let quarantine_dir = PathBuf::from(home_dir).join("Desktop/AI_Security_Guardian/quarantine");
+    let quarantine_dir = PathBuf::from(home_dir).join("Desktop/Aegis_Guardian/quarantine");
 
     // Ensure quarantine directory exists
     if !quarantine_dir.exists() {
