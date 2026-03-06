@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== AI Security Guardian 打包腳本 ==="
+echo "=== Aegis Guardian 打包腳本 ==="
 
 # 設定目錄
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

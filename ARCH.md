@@ -1,4 +1,4 @@
-# AI Security Guardian - 物理架構規格書 v2.0 (對齊 2026-03-04 指令)
+# Aegis Guardian - 物理架構規格書 v2.0 (對齊 2026-03-04 指令)
 
 ## 1. 物理路徑結構 (Folder Tree)
 ```text

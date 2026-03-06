@@ -85,23 +85,56 @@ const ActivityDashboard = ({ stats }) => {
 
             <div className="flex-grow space-y-3 overflow-y-auto relative z-10 pr-2 scrollbar-thin scrollbar-thumb-slate-800">
                 {exposedPorts.length > 0 ? (
-                    exposedPorts.map((item, index) => (
-                        <div key={`${item.port}-${index}`} className={`flex justify-between items-center p-3 border rounded-xl ${item.is_risky ? 'bg-red-500/5 border-red-500/20' : 'bg-slate-800/30 border-slate-700/50'}`}>
-                            <div className="flex items-center space-x-3">
-                                {item.is_risky ? (
-                                    <ShieldAlert className="w-4 h-4 text-red-500/80" />
-                                ) : (
-                                    <Globe className="w-4 h-4 text-slate-400" />
-                                )}
-                                <div className="flex flex-col">
-                                    <span className={`text-xs font-mono ${item.is_risky ? 'text-red-400' : 'text-slate-300'}`}>
-                                        {item.port} &rarr; {item.process_name || 'Unknown'} <span className="text-[10px] text-slate-500">(PID: {item.pid})</span>
-                                    </span>
+                    exposedPorts.filter(item => !item.ignored).map((item, index) => (
+                        <div key={`${item.port}-${index}`} className={`flex flex-col p-3 border rounded-xl space-y-3 ${item.is_risky ? 'bg-red-500/5 border-red-500/20' : 'bg-slate-800/30 border-slate-700/50'}`}>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center space-x-3">
+                                    {item.is_risky ? (
+                                        <ShieldAlert className="w-4 h-4 text-red-500/80" />
+                                    ) : (
+                                        <Globe className="w-4 h-4 text-slate-400" />
+                                    )}
+                                    <div className="flex flex-col">
+                                        <span className={`text-xs font-mono ${item.is_risky ? 'text-red-400' : 'text-slate-300'}`}>
+                                            {item.port} &rarr; {item.process_name || 'Unknown'} <span className="text-[10px] text-slate-500">(PID: {item.pid})</span>
+                                        </span>
+                                    </div>
                                 </div>
+                                <span className={`text-[9px] font-bold uppercase ${item.is_risky ? 'text-red-500/60' : 'text-emerald-500/60'}`}>
+                                    {item.is_risky ? 'Exposed' : 'Listening'}
+                                </span>
                             </div>
-                            <span className={`text-[9px] font-bold uppercase ${item.is_risky ? 'text-red-500/60' : 'text-emerald-500/60'}`}>
-                                {item.is_risky ? 'Exposed' : 'Listening'}
-                            </span>
+                            
+                            {item.is_risky && (
+                                <div className="flex justify-end space-x-2 pt-2 border-t border-red-500/10">
+                                    <button 
+                                        onClick={async () => {
+                                            try {
+                                                const res = await invoke('terminate_process', { pid: item.pid });
+                                                console.log("Terminate result:", res);
+                                                // After termination, refresh the list immediately
+                                                fetchExposedPorts();
+                                            } catch (err) {
+                                                console.error("Failed to terminate process:", err);
+                                            }
+                                        }}
+                                        className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-[10px] font-bold text-red-400 uppercase tracking-wider transition-colors"
+                                    >
+                                        Deny (Terminate)
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            // Handle temporary ignore visually
+                                            setExposedPorts(prev => prev.map(p => 
+                                                p.pid === item.pid ? { ...p, ignored: true } : p
+                                            ));
+                                        }}
+                                        className="px-3 py-1 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded text-[10px] font-bold text-slate-400 uppercase tracking-wider transition-colors"
+                                    >
+                                        Approve (Ignore)
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))
                 ) : (

@@ -1,4 +1,4 @@
-# AI Security Guardian (AI 資安守門員) - Configuration
+# Aegis Guardian (AI 資安守門員) - Configuration
 language: 'zh-TW' # 支援: en, zh-TW, ja
 
 behavior_firewall:

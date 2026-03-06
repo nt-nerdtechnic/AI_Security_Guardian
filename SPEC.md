@@ -1,4 +1,4 @@
-# AI Security Guardian (AI 資安守門員) - 獨立軟體規格書 v1.0
+# Aegis Guardian (AI 資安守門員) - 獨立軟體規格書 v1.0
 
 ## 1. 產品定義 (Product Definition)
 這是一個**輕量級、獨立運行**的桌面資安工具。它不依賴 Nerty 或其他大型 AI 平台，而是作為一個獨立的 Binary/腳本，專注於透過本地模型提供「即時螢幕監控」與「敏感行為攔截」。
