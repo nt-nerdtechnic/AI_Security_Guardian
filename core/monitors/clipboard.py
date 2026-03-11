@@ -3,7 +3,7 @@ import pyperclip
 import re
 import logging
 import threading
-from guardian.models.incident import IncidentLogger
+from core.models.incident import IncidentLogger
 
 logger = logging.getLogger('Aegis_Guardian')
 

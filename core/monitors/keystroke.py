@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 from pynput import keyboard
 from pathlib import Path
-from guardian.models.incident import IncidentLogger
+from core.models.incident import IncidentLogger
 
 logger = logging.getLogger('Aegis_Guardian')
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

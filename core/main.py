@@ -9,22 +9,22 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
 
-from guardian.models.config import ConfigModel
-from guardian.models.incident import IncidentLogger
-from guardian.viewmodels.notifier import TelegramNotifierViewModel
-from guardian.viewmodels.ai_client import AiBrainViewModel
-from guardian.monitors.clipboard import ClipboardMonitor
-from guardian.monitors.active_window import ActiveWindowMonitor
-from guardian.monitors.keystroke import KeystrokeMonitor
-from guardian.monitors.network import NetworkMonitor
-from guardian.monitors.heartbeat import SystemHeartbeat
+from core.models.config import ConfigModel
+from core.models.incident import IncidentLogger
+from core.viewmodels.notifier import TelegramNotifierViewModel
+from core.viewmodels.ai_client import AiBrainViewModel
+from core.monitors.clipboard import ClipboardMonitor
+from core.monitors.active_window import ActiveWindowMonitor
+from core.monitors.keystroke import KeystrokeMonitor
+from core.monitors.network import NetworkMonitor
+from core.monitors.heartbeat import SystemHeartbeat
 
-from guardian.models.i18n import I18nManager
-import guardian.monitors.clipboard as cb_mon
-import guardian.monitors.active_window as aw_mon
-import guardian.monitors.keystroke as k_mon
-import guardian.monitors.network as nw_mon
-import guardian.monitors.heartbeat as hb_mon
+from core.models.i18n import I18nManager
+import core.monitors.clipboard as cb_mon
+import core.monitors.active_window as aw_mon
+import core.monitors.keystroke as k_mon
+import core.monitors.network as nw_mon
+import core.monitors.heartbeat as hb_mon
 
 # Logger Setup
 logging.basicConfig(

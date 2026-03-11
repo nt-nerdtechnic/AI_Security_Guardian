@@ -82,7 +82,7 @@
     "clipboard_guard": "Clipboard Guard",
     "network_shield": "Network Shield",
     "background_sync": "Background Sync",
-    "guardian_online": "guardian.py: ONLINE"
+    "guardian_online": "core/main.py: ONLINE"
   },
 
   "port_risks": {

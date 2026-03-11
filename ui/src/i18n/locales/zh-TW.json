@@ -82,7 +82,7 @@
     "clipboard_guard": "剪貼簿防護",
     "network_shield": "網路盾牌",
     "background_sync": "背景同步",
-    "guardian_online": "guardian.py：運行中"
+    "guardian_online": "core/main.py：運行中"
   },
 
   "port_risks": {

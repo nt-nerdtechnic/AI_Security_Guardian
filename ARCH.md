@@ -4,9 +4,9 @@
 
 ```text
 ~/Desktop/AI_Security_Guardian/
-├── guardian.py             # [Python] 主協調程序 (監控管理員 + 主入口)
+├── core/main.py             # [Python] 主協調程序 (監控管理員 + 主入口)
 ├── guardian_brain.py       # [Python] AI 分析引擎 (直接 import)
-├── guardian_core/          # [Python] 共用工具套件
+├── core/          # [Python] 共用工具套件
 │   ├── i18n.py             #   多語系管理員
 │   └── actions/
 │       └── mitigation.py   #   程序終止/隔離動作
@@ -21,7 +21,7 @@
 
 ## 2. 核心運作協議 (Execution Protocol)
 
-1. **[啟動]** `python guardian.py` 作為主背景服務啟動所有監控模組。
+1. **[啟動]** `python core/main.py` 作為主背景服務啟動所有監控模組。
 2. **[感知]** `ClipboardMonitor`、`ActiveWindowMonitor`、`KeystrokeMonitor`、`NetworkMonitor` 各自在獨立執行緒中監控系統狀態。
 3. **[初篩]** 每個監控模組使用 Regex 或規則清單進行第一道過濾。
 4. **[AI 判定]** 若 Regex 未命中，`AiBrainClient` 呼叫 `guardian_brain.py` 的分析函數（透過本地 Ollama 推理）進行語義或視覺二次判定。
@@ -43,6 +43,6 @@
 ## 4. 開發 SOP
 
 - **Python First**：所有監控邏輯與 AI 分析以 Python 實作為主。
-- **Brain as Import**：`guardian_brain.py` 只提供分析函數供 `guardian.py` 直接 import，不啟動 HTTP Server。
+- **Brain as Import**：`guardian_brain.py` 只提供分析函數供 `core/main.py` 直接 import，不啟動 HTTP Server。
 - **Tauri 為 UI 橋**：Tauri Rust 後端只負責 UI 所需的資料提供與系統動作（進程終止、檔案隔離），不重複實作監控邏輯。
 - **共用日誌**：`logs/incidents.json` 為 Python 監控服務與 Tauri UI 之間的唯一資料共享媒介。

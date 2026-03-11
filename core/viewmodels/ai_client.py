@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger('Aegis_Guardian')
 
 try:
-    from guardian_brain import (
+    from core.brain import (
         analyze_visual_threat,
         analyze_command_semantics,
         VISUAL_MODEL,
