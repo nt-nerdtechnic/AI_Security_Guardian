@@ -12,7 +12,7 @@ class I18nManager:
     def __init__(self, language="zh-TW"):
         self.language = language
         self.strings = {}
-        self.base_dir = Path(__file__).resolve().parent.parent / 'locales'
+        self.base_dir = Path(__file__).resolve().parent.parent.parent / 'locales'
         self.load_language(language)
 
     def load_language(self, language):

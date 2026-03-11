@@ -10,7 +10,7 @@
 │   ├── i18n.py             #   多語系管理員
 │   └── actions/
 │       └── mitigation.py   #   程序終止/隔離動作
-├── guardian_ui/            # [Tauri + React] 桌面 UI
+├── ui/                     # [Tauri + React] 桌面 UI
 │   ├── src/                #   React 前端 (JSX 元件)
 │   └── src-tauri/          #   Tauri Rust 後端 (IPC + 威脅分析 Command)
 ├── locales/                # 多語系資源 (zh-TW, zh-CN, en, ja)

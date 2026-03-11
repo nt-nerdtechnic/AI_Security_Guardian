@@ -19,7 +19,7 @@ from guardian.monitors.keystroke import KeystrokeMonitor
 from guardian.monitors.network import NetworkMonitor
 from guardian.monitors.heartbeat import SystemHeartbeat
 
-from guardian_core.i18n import I18nManager
+from guardian.models.i18n import I18nManager
 import guardian.monitors.clipboard as cb_mon
 import guardian.monitors.active_window as aw_mon
 import guardian.monitors.keystroke as k_mon
