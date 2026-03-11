@@ -1,0 +1,107 @@
+{
+  "lang_name": "English",
+  "lang_code": "en",
+
+  "app": {
+    "title": "Aegis Guardian",
+    "toggle_dark": "Switch to Dark Mode",
+    "toggle_light": "Switch to Light Mode",
+    "footer_unit": "Autonomous R&D Unit",
+    "footer_brand": "NerdTechnic",
+    "language_button_title": "Switch Language"
+  },
+
+  "stats": {
+    "threats_blocked": "Threats Blocked",
+    "threats_blocked_sub": "Intrusions detected",
+    "keys_redacted": "Keys Redacted",
+    "keys_redacted_sub": "Sensitive data cleared",
+    "visual_alerts": "Visual Alerts",
+    "visual_alerts_sub": "Screenshots triggered"
+  },
+
+  "system_stream": {
+    "title": "System Stream",
+    "status_secure": "SECURE",
+    "process_scan": "Process Scan",
+    "memory_buffer": "Memory Buffer",
+    "status_active": "ACTIVE",
+    "status_stable": "STABLE",
+    "last_heartbeat": "Last Heartbeat",
+    "heartbeat_active": "Active"
+  },
+
+  "network": {
+    "title": "Network Exposure",
+    "status_protected": "PROTECTED",
+    "status_monitoring": "MONITORING",
+    "threat": "THREAT",
+    "threats": "THREATS",
+    "risky_count": "Risky",
+    "safe_count": "Safe",
+    "total_ports": "{count} Ports Total",
+    "no_ports": "No Ports Exposed",
+    "allowed_count": "Allowed",
+    "whitelisted_label": "ALLOWED",
+    "exposed_label": "EXPOSED",
+    "listen_label": "Listen",
+    "system_listening": "System Services ({count})",
+    "btn_deny": "Deny (Terminate)",
+    "btn_approve": "Approve (Ignore)",
+    "btn_revoke": "Revoke",
+    "btn_kill": "Force Close",
+    "unknown_process": "Unknown"
+  },
+
+  "file_integrity": {
+    "title": "File Integrity",
+    "status_warning": "WARNING",
+    "status_monitoring": "MONITORING",
+    "btn_quarantine": "Deny (Quarantine)",
+    "btn_ignore": "Approve (Ignore)",
+    "confirm_quarantine": "[Security Alert]\nMove this file to Quarantine?\nPath: {path}",
+    "confirm_ignore": "Ignore the integrity alert for this file?\nPath: {path}",
+    "time_mins_ago": "{n} mins ago",
+    "time_hours_ago": "{n} hours ago"
+  },
+
+  "modes": {
+    "panel_title": "Protection Level",
+    "panel_desc": "Select protection level to define how strictly the system handles detected anomalies.",
+    "silent_monitor": "Silent Monitor",
+    "silent_desc": "Logging anomalies only. No intervention.",
+    "advisory": "Advisory",
+    "advisory_desc": "Prompting user for risky actions.",
+    "strict_blocking": "Strict Blocking",
+    "strict_desc": "Automatically terminating high-risk processes."
+  },
+
+  "settings": {
+    "panel_title": "Intelligence Nodes",
+    "visual_sentry": "Visual Sentry",
+    "clipboard_guard": "Clipboard Guard",
+    "network_shield": "Network Shield",
+    "background_sync": "Background Sync",
+    "guardian_online": "guardian.py: ONLINE"
+  },
+
+  "port_risks": {
+    "ftp_risk": "Plaintext transfer, high risk",
+    "ssh_risk": "Remote access, verify intent",
+    "telnet_risk": "Plaintext transfer, critical risk",
+    "smtp_risk": "Mail service",
+    "dns_risk": "DNS resolution service",
+    "http_risk": "Unencrypted web service",
+    "https_risk": "Encrypted web service",
+    "mssql_risk": "SQL Server database, high risk",
+    "dev_server_risk": "Development server",
+    "mysql_risk": "Database, high risk",
+    "postgresql_risk": "Database, high risk",
+    "vnc_risk": "Remote desktop, high risk",
+    "redis_risk": "Cache database, high risk",
+    "http_alt_risk": "Alt HTTP, verify intent",
+    "https_alt_risk": "Alt HTTPS",
+    "mongodb_risk": "NoSQL database, high risk",
+    "system_service_risk": "System service"
+  }
+}

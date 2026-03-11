@@ -1,32 +1,90 @@
-# Rust
+# =========================
+# Operating System & Editor
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python (Backend)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Node.js / React (Frontend)
+# =========================
+node_modules/
+dist/
+dist-ssr/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =========================
+# Rust / Tauri (Core)
+# =========================
 target/
 **/target/
 **/*.rs.bk
 Cargo.lock
-
-# Node.js
-node_modules/
-dist/
-.eslintcache
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-.venv/
-
-# macOS
-.DS_Store
-
-# Logs
-logs/*.log
-logs/*.png
-logs/incidents.json
-
-# Tauri
 src-tauri/target/
 src-tauri/gen/
+
+# =========================
+# Application Specific
+# =========================
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Quarantine
+quarantine/*
+!quarantine/.gitkeep
+
+# Models
+models/*
+!models/.gitkeep
+!models/placeholder.txt
 
 # Release Artifacts
 guardian_ui_release_*

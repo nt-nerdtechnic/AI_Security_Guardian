@@ -1,0 +1,5 @@
+mode: Silent Monitor
+modules:
+  visual: true
+  clipboard: true
+  network: true

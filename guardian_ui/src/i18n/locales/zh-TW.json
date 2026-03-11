@@ -1,0 +1,107 @@
+{
+  "lang_name": "繁體中文",
+  "lang_code": "zh-TW",
+
+  "app": {
+    "title": "Aegis Guardian",
+    "toggle_dark": "切換至 Dark 模式",
+    "toggle_light": "切換至 Light 模式",
+    "footer_unit": "Autonomous R&D Unit",
+    "footer_brand": "NerdTechnic",
+    "language_button_title": "切換語言"
+  },
+
+  "stats": {
+    "threats_blocked": "已封鎖威脅",
+    "threats_blocked_sub": "偵測到的入侵次數",
+    "keys_redacted": "已脫敏金鑰",
+    "keys_redacted_sub": "清除的敏感資料片段",
+    "visual_alerts": "視覺警戒",
+    "visual_alerts_sub": "截圖觸發次數"
+  },
+
+  "system_stream": {
+    "title": "系統串流",
+    "status_secure": "安全",
+    "process_scan": "程序掃描",
+    "memory_buffer": "記憶體緩衝",
+    "status_active": "活躍",
+    "status_stable": "穩定",
+    "last_heartbeat": "最後心跳",
+    "heartbeat_active": "活躍中"
+  },
+
+  "network": {
+    "title": "網路曝露",
+    "status_protected": "受保護",
+    "status_monitoring": "監控中",
+    "threat": "威脅",
+    "threats": "個威脅",
+    "risky_count": "風險",
+    "safe_count": "正常",
+    "total_ports": "共 {count} 個 Port",
+    "no_ports": "無已曝露連接埠",
+    "allowed_count": "允許",
+    "whitelisted_label": "已允許",
+    "exposed_label": "已曝露",
+    "listen_label": "監聽中",
+    "system_listening": "系統服務監聽中 ({count})",
+    "btn_deny": "拒絕（終止）",
+    "btn_approve": "允許（忽略）",
+    "btn_revoke": "撤銷",
+    "btn_kill": "強制關閉",
+    "unknown_process": "未知"
+  },
+
+  "file_integrity": {
+    "title": "檔案完整性",
+    "status_warning": "警告",
+    "status_monitoring": "監控中",
+    "btn_quarantine": "拒絕（隔離）",
+    "btn_ignore": "允許（忽略）",
+    "confirm_quarantine": "【資安警報】\n確定要把這個檔案移至隔離區嗎？\n路徑: {path}",
+    "confirm_ignore": "確定要忽略這個檔案的變動警報嗎？\n路徑: {path}",
+    "time_mins_ago": "{n} 分鐘前",
+    "time_hours_ago": "{n} 小時前"
+  },
+
+  "modes": {
+    "panel_title": "防護等級",
+    "panel_desc": "選擇防護等級，定義系統對偵測到的異常行為的處置方式。",
+    "silent_monitor": "靜默監控",
+    "silent_desc": "僅記錄異常，不作任何干預。",
+    "advisory": "建議模式",
+    "advisory_desc": "針對高風險行為提示用戶確認。",
+    "strict_blocking": "嚴格封鎖",
+    "strict_desc": "自動終止高風險程序。"
+  },
+
+  "settings": {
+    "panel_title": "情報節點",
+    "visual_sentry": "視覺哨兵",
+    "clipboard_guard": "剪貼簿防護",
+    "network_shield": "網路盾牌",
+    "background_sync": "背景同步",
+    "guardian_online": "guardian.py：運行中"
+  },
+
+  "port_risks": {
+    "ftp_risk": "明文傳輸，高風險",
+    "ssh_risk": "遠端存取，需確認",
+    "telnet_risk": "明文傳輸，極高風險",
+    "smtp_risk": "郵件服務",
+    "dns_risk": "DNS 解析服務",
+    "http_risk": "未加密網頁服務",
+    "https_risk": "加密網頁服務",
+    "mssql_risk": "SQL Server 資料庫，高風險",
+    "dev_server_risk": "開發用伺服器",
+    "mysql_risk": "資料庫，高風險",
+    "postgresql_risk": "資料庫，高風險",
+    "vnc_risk": "遠端桌面，高風險",
+    "redis_risk": "快取資料庫，高風險",
+    "http_alt_risk": "替代 HTTP，需確認",
+    "https_alt_risk": "替代 HTTPS",
+    "mongodb_risk": "NoSQL 資料庫，高風險",
+    "system_service_risk": "系統服務"
+  }
+}

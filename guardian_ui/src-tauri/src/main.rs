@@ -1,13 +1,15 @@
 // Aegis Guardian - Tauri Backend
-// v1.0.7-Sprint-NetworkSentinel
+// v1.1.0-Sprint-WhitelistDB
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod network;
 mod file_integrity;
+mod whitelist;
 pub mod quarantine;
 pub mod process_control;
 
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -18,12 +20,47 @@ use std::time::Duration;
 use tauri::State;
 use crate::network::{NetworkSentinel, ExposedPort};
 use crate::file_integrity::check_file_integrity;
+use std::io::{BufRead, BufReader};
+use std::fs::File;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct IncidentStats {
     total_blocked: u32,
     sensitive_keys: u32,
     visual_alerts: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct GuardianEvent {
+    time: String,
+    source: String,
+    desc: String,
+    _ts: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct RealActivities {
+    stats: IncidentStats,
+    threats: Vec<GuardianEvent>,
+    keys: Vec<GuardianEvent>,
+    visual: Vec<GuardianEvent>,
+}
+
+fn parse_timestamp(ts: &str) -> (String, i64) {
+    let mut ts_clean = ts;
+    if let Some(idx) = ts.find('.') {
+        ts_clean = &ts[..idx];
+    }
+    match chrono::NaiveDateTime::parse_from_str(ts_clean, "%Y-%m-%dT%H:%M:%S") {
+        Ok(dt) => {
+            let time_str = dt.format("%H:%M:%S").to_string();
+            let ts_ms = dt.and_utc().timestamp_millis();
+            (time_str, ts_ms)
+        }
+        Err(_) => {
+            ("00:00:00".to_string(), 0)
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,18 +79,131 @@ struct GuardianConfig {
 struct SharedData {
     config: GuardianConfig,
     stats: IncidentStats,
+    whitelist_conn: Connection,
+}
+
+// ─── Tauri Commands ────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_exposed_ports(state: State<Arc<Mutex<SharedData>>>) -> Vec<ExposedPort> {
+    let data = state.lock().unwrap();
+    let sentinel = NetworkSentinel::new();
+    let ports = sentinel.scan_local_ports();
+
+    // 取得當前所有正在監聽的 (port, pid) 清單
+    let active_ports_and_pids: Vec<(u16, u32)> = ports.iter().map(|p| (p.port, p.pid)).collect();
+
+    // 清理資料庫中已經失效的白名單（如果原本的服務已關閉，就把該 port 從白名單移除）
+    let _ = whitelist::cleanup_stale_whitelist(&data.whitelist_conn, &active_ports_and_pids);
+
+    // 從 DB 取得最新白名單 (port, pid)，過濾回傳
+    let whitelisted = whitelist::get_whitelisted_ports(&data.whitelist_conn)
+        .unwrap_or_default();
+
+    ports
+        .into_iter()
+        .map(|mut p| {
+            if whitelisted.contains(&(p.port, p.pid)) {
+                p.ignored = true;
+            }
+            p
+        })
+        .collect()
 }
 
 #[tauri::command]
-fn get_exposed_ports() -> Vec<ExposedPort> {
-    let sentinel = NetworkSentinel::new();
-    sentinel.scan_local_ports()
+fn add_network_whitelist(
+    state: State<Arc<Mutex<SharedData>>>,
+    port: u16,
+    pid: u32,
+    process_name: String,
+) -> Result<(), String> {
+    let data = state.lock().unwrap();
+    whitelist::add_whitelist(&data.whitelist_conn, port, pid, &process_name)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn remove_network_whitelist(
+    state: State<Arc<Mutex<SharedData>>>,
+    port: u16,
+) -> Result<(), String> {
+    let data = state.lock().unwrap();
+    whitelist::remove_whitelist(&data.whitelist_conn, port)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_network_whitelist(
+    state: State<Arc<Mutex<SharedData>>>,
+) -> Result<Vec<u16>, String> {
+    let data = state.lock().unwrap();
+    whitelist::get_whitelisted_ports(&data.whitelist_conn)
+        .map(|ports| ports.into_iter().map(|(p, _)| p).collect())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_incident_stats(state: State<Arc<Mutex<SharedData>>>) -> IncidentStats {
     let data = state.lock().unwrap();
     data.stats.clone()
+}
+
+#[tauri::command]
+fn get_real_activities() -> Result<RealActivities, String> {
+    let mut stats = IncidentStats {
+        total_blocked: 0,
+        sensitive_keys: 0,
+        visual_alerts: 0,
+    };
+    let mut threats = Vec::new();
+    let mut keys = Vec::new();
+    let mut visual = Vec::new();
+
+    let path = PathBuf::from("../logs/incidents.json");
+    if let Ok(file) = File::open(path) {
+        let reader = BufReader::new(file);
+        for line in reader.lines().filter_map(|l| l.ok()) {
+            if let Ok(v) = serde_json::from_str::<Value>(&line) {
+                let module = v["module"].as_str().unwrap_or("Unknown").to_string();
+                let severity = v["severity"].as_str().unwrap_or("INFO");
+                let message = v["message"].as_str().unwrap_or("").to_string();
+                let timestamp_str = v["timestamp"].as_str().unwrap_or("");
+                
+                let (time, _ts) = parse_timestamp(timestamp_str);
+                
+                // Skip info logs like "Log Initialized" to not clutter the UI
+                if severity == "INFO" {
+                    continue;
+                }
+                
+                let event = GuardianEvent {
+                    time,
+                    source: module.clone(),
+                    desc: message,
+                    _ts,
+                };
+
+                if module == "NetworkMonitor" || module == "SystemFirewall" || severity == "CRITICAL" {
+                    stats.total_blocked += 1;
+                    if severity != "INFO" { threats.push(event); }
+                } else if module == "ClipboardMonitor" || module == "TerminalFirewall" {
+                    stats.sensitive_keys += 1;
+                    keys.push(event);
+                } else if module == "VisualSentry" {
+                    stats.visual_alerts += 1;
+                    visual.push(event);
+                }
+            }
+        }
+    }
+
+    Ok(RealActivities {
+        stats,
+        threats,
+        keys,
+        visual,
+    })
 }
 
 #[tauri::command]
@@ -66,14 +216,12 @@ fn get_config(state: State<Arc<Mutex<SharedData>>>) -> Result<GuardianConfig, St
 fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: ModulesConfig) -> Result<(), String> {
     let config_path = PathBuf::from("../config.yaml");
     
-    // Update the shared state first
     {
         let mut data = state.lock().unwrap();
         data.config.mode = mode.clone();
         data.config.modules = modules.clone();
     }
 
-    // Then write to file
     let mut new_lines = Vec::new();
     new_lines.push(format!("mode: {}", mode));
     new_lines.push("modules:".to_string());
@@ -86,7 +234,11 @@ fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: Mo
     Ok(())
 }
 
+// ─── App Entry ─────────────────────────────────────────────────────────────
+
 fn main() {
+    let wl_conn = whitelist::init_db().expect("Failed to initialise whitelist DB");
+
     let shared_data = Arc::new(Mutex::new(SharedData {
         config: GuardianConfig {
             mode: "Silent Monitor".to_string(),
@@ -101,20 +253,10 @@ fn main() {
             sensitive_keys: 0,
             visual_alerts: 0,
         },
+        whitelist_conn: wl_conn,
     }));
 
-    // Start a background thread to simulate gathering stats
-    let data_clone = shared_data.clone();
-    thread::spawn(move || {
-        loop {
-            thread::sleep(Duration::from_secs(10));
-            let mut data = data_clone.lock().unwrap();
-            data.stats.total_blocked += 1;
-            if data.stats.total_blocked % 5 == 0 {
-                data.stats.sensitive_keys += 1;
-            }
-        }
-    });
+
 
     tauri::Builder::default()
         .manage(shared_data)
@@ -122,8 +264,12 @@ fn main() {
             get_config,
             update_config,
             get_incident_stats,
-            get_exposed_ports, // This was already here, but the example showed network::get_exposed_ports
-            check_file_integrity, // This was already here, but the example showed file_integrity::check_file_integrity
+            get_real_activities,
+            get_exposed_ports,
+            add_network_whitelist,
+            remove_network_whitelist,
+            get_network_whitelist,
+            check_file_integrity,
             quarantine::move_to_quarantine,
             process_control::terminate_process
         ])

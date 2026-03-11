@@ -1,0 +1,107 @@
+{
+  "lang_name": "简体中文",
+  "lang_code": "zh-CN",
+
+  "app": {
+    "title": "Aegis Guardian",
+    "toggle_dark": "切换至 Dark 模式",
+    "toggle_light": "切换至 Light 模式",
+    "footer_unit": "Autonomous R&D Unit",
+    "footer_brand": "NerdTechnic",
+    "language_button_title": "切换语言"
+  },
+
+  "stats": {
+    "threats_blocked": "已拦截威胁",
+    "threats_blocked_sub": "检测到的入侵次数",
+    "keys_redacted": "已脱敏密钥",
+    "keys_redacted_sub": "清除的敏感数据片段",
+    "visual_alerts": "视觉警戒",
+    "visual_alerts_sub": "截图触发次数"
+  },
+
+  "system_stream": {
+    "title": "系统流",
+    "status_secure": "安全",
+    "process_scan": "进程扫描",
+    "memory_buffer": "内存缓冲",
+    "status_active": "活跃",
+    "status_stable": "稳定",
+    "last_heartbeat": "最后心跳",
+    "heartbeat_active": "活跃中"
+  },
+
+  "network": {
+    "title": "网络暴露",
+    "status_protected": "受保护",
+    "status_monitoring": "监控中",
+    "threat": "威胁",
+    "threats": "个威胁",
+    "risky_count": "风险",
+    "safe_count": "正常",
+    "total_ports": "共 {count} 个 Port",
+    "no_ports": "无已暴露端口",
+    "allowed_count": "允许",
+    "whitelisted_label": "已允许",
+    "exposed_label": "已暴露",
+    "listen_label": "监听中",
+    "system_listening": "系统服务监听中 ({count})",
+    "btn_deny": "拒绝（终止）",
+    "btn_approve": "允许（忽略）",
+    "btn_revoke": "撤销",
+    "btn_kill": "强制关闭",
+    "unknown_process": "未知"
+  },
+
+  "file_integrity": {
+    "title": "文件完整性",
+    "status_warning": "警告",
+    "status_monitoring": "监控中",
+    "btn_quarantine": "拒绝（隔离）",
+    "btn_ignore": "允许（忽略）",
+    "confirm_quarantine": "【安全警报】\n确定要将此文件移至隔离区吗？\n路径: {path}",
+    "confirm_ignore": "确定要忽略此文件的变动警报吗？\n路径: {path}",
+    "time_mins_ago": "{n} 分钟前",
+    "time_hours_ago": "{n} 小时前"
+  },
+
+  "modes": {
+    "panel_title": "防护等级",
+    "panel_desc": "选择防护等级，定义系统对检测到的异常行为的处置方式。",
+    "silent_monitor": "静默监控",
+    "silent_desc": "仅记录异常，不作任何干预。",
+    "advisory": "建议模式",
+    "advisory_desc": "针对高风险行为提示用户确认。",
+    "strict_blocking": "严格封锁",
+    "strict_desc": "自动终止高风险进程。"
+  },
+
+  "settings": {
+    "panel_title": "情报节点",
+    "visual_sentry": "视觉哨兵",
+    "clipboard_guard": "剪贴板防护",
+    "network_shield": "网络屏障",
+    "background_sync": "后台同步",
+    "guardian_online": "guardian.py：运行中"
+  },
+
+  "port_risks": {
+    "ftp_risk": "明文传输，高风险",
+    "ssh_risk": "远程访问，需确认",
+    "telnet_risk": "明文传输，极高风险",
+    "smtp_risk": "邮件服务",
+    "dns_risk": "DNS 解析服务",
+    "http_risk": "未加密网页服务",
+    "https_risk": "加密网页服务",
+    "mssql_risk": "SQL Server 数据库，高风险",
+    "dev_server_risk": "开发服务器",
+    "mysql_risk": "数据库，高风险",
+    "postgresql_risk": "数据库，高风险",
+    "vnc_risk": "远程桌面，高风险",
+    "redis_risk": "缓存数据库，高风险",
+    "http_alt_risk": "备用 HTTP，需确认",
+    "https_alt_risk": "备用 HTTPS",
+    "mongodb_risk": "NoSQL 数据库，高风险",
+    "system_service_risk": "系统服务"
+  }
+}

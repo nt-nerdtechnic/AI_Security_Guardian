@@ -7,7 +7,10 @@ pub struct ExposedPort {
     pub pid: u32,
     pub process_name: String,
     pub is_risky: bool,
+    #[serde(default)]
+    pub ignored: bool,
 }
+
 
 pub struct NetworkSentinel {
     monitored_ports: Vec<u16>,
@@ -48,6 +51,7 @@ impl NetworkSentinel {
                                 pid: current_pid,
                                 process_name: current_process_name.clone(),
                                 is_risky,
+                                ignored: false,
                             };
                             if !exposed_ports.contains(&exposed) {
                                 exposed_ports.push(exposed);
