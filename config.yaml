@@ -42,6 +42,8 @@ visual_sentry:
     - 'Settings'
     - 'Passwords'
     - 'Keychain'
+  # 截圖自動輪轉設定：logs/ 目錄中最多保留幾張截圖（超過會自動刪除最舊的）
+  max_snapshots: 50
 
 network_monitor:
   # 網路由監控設定

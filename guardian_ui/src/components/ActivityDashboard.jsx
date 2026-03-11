@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Globe, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import FileIntegrityAlerts from './FileIntegrityAlerts';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -27,6 +28,7 @@ const PORT_RISK_KEYS = {
 const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: [] }, darkMode, t: theme }) => {
   const { t } = useLanguage();
   const [exposedPorts, setExposedPorts] = useState([]);
+  const [aiAlerts, setAiAlerts]         = useState([]);
 
   const getPortLabel = useCallback((port) => {
     const entry = PORT_RISK_KEYS[port];
@@ -49,6 +51,22 @@ const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: []
     const interval = setInterval(fetchExposedPorts, 10000);
     return () => clearInterval(interval);
   }, [fetchExposedPorts]);
+
+  // ── AI 告警：初始載入歷史 + 即時訂閱 ────────────────────────────────────
+  useEffect(() => {
+    // 1. 載入歷史告警
+    invoke('get_ai_alerts')
+      .then(data => setAiAlerts(data.slice(-50).reverse()))  // 最近 50 筆，新在前
+      .catch(err => console.warn('get_ai_alerts error:', err));
+
+    // 2. 即時訂閱 Tauri 推送
+    let unlisten;
+    listen('ai-alert', (event) => {
+      setAiAlerts(prev => [event.payload, ...prev].slice(0, 50));
+    }).then(fn => { unlisten = fn; });
+
+    return () => { if (unlisten) unlisten(); };
+  }, []);
 
   const panel = `${theme.surface} rounded-3xl border ${theme.border} p-8 flex flex-col relative overflow-hidden group transition-colors duration-300`;
 
@@ -133,6 +151,9 @@ const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: []
         {/* Right: File Integrity Alerts */}
         <FileIntegrityAlerts darkMode={darkMode} t={theme} />
       </div>
+
+      {/* AI 判定告警面板（全寬） */}
+      <AiAlertPanel aiAlerts={aiAlerts} darkMode={darkMode} theme={theme} />
     </div>
   );
 };
@@ -370,40 +391,32 @@ function NetworkExposurePanel({ exposedPorts, setExposedPorts, fetchExposedPorts
 
 function SafeProcessGroup({ group, getPortLabel, darkMode, t, fetchExposedPorts }) {
   const [expanded, setExpanded] = useState(false);
-  const multiple = group.items.length > 1;
 
   return (
     <div className={`flex flex-col ${darkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-100/50'} transition-colors`}>
-      <div 
-        onClick={() => multiple ? setExpanded(!expanded) : null}
-        className={`flex items-center justify-between px-3 py-2 ${multiple ? 'cursor-pointer' : ''}`}
+      {/* 標題列：永遠可點擊收合 */}
+      <div
+        onClick={() => setExpanded(v => !v)}
+        className="flex items-center justify-between px-3 py-2 cursor-pointer"
       >
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-2">
-            <Globe className={`w-3 h-3 ${darkMode ? 'text-slate-500' : 'text-slate-400'} flex-shrink-0`} />
-            <span className={`text-[11px] font-bold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              {group.name}
-            </span>
-            {multiple && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${darkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
-                {group.items.length}
-              </span>
-            )}
-          </div>
-          
-          {multiple && (
-            <div className="flex items-center space-x-2">
-              {expanded 
-                ? <ChevronUp className={`w-3.5 h-3.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
-                : <ChevronDown className={`w-3.5 h-3.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
-              }
-            </div>
-          )}
+        <div className="flex items-center space-x-2">
+          <Globe className={`w-3 h-3 ${darkMode ? 'text-slate-500' : 'text-slate-400'} flex-shrink-0`} />
+          <span className={`text-[11px] font-bold ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+            {group.name}
+          </span>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${darkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
+            {group.items.length}
+          </span>
         </div>
+        {expanded
+          ? <ChevronUp className={`w-3.5 h-3.5 flex-shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+          : <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+        }
       </div>
-      
-      {(expanded || !multiple) && (
-        <div className={`pl-8 pr-3 pb-2 space-y-1 ${!multiple ? 'pt-0' : 'pt-1 border-t ' + (darkMode ? 'border-slate-700/50' : 'border-slate-200')}`}>
+
+      {/* 展開後的 Port 列表 */}
+      {expanded && (
+        <div className={`pl-8 pr-3 pb-2 pt-1 space-y-1 border-t ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
           {group.items.map((item, i) => {
             const label = getPortLabel(item.port);
             return (
@@ -545,6 +558,127 @@ function ProgressBar({ label, status, color, width, darkMode }) {
       <div className={`w-full ${darkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-200 border-slate-300'} h-2 rounded-full overflow-hidden border`}>
         <div className={`bg-gradient-to-r ${colors[color]} h-full ${width} ${color === 'emerald' ? 'animate-pulse' : ''}`} />
       </div>
+    </div>
+  );
+}
+
+// ── AI 告警面板 ─────────────────────────────────────────────────────────────
+function AiAlertPanel({ aiAlerts, darkMode, theme }) {
+  const [expanded, setExpanded] = useState(true);
+  const hasCritical = aiAlerts.some(a => a.severity === 'CRITICAL');
+
+  // 依模組判斷告警類型
+  const typeLabel = (module) => {
+    if (module === 'AI_Brain_Clipboard') return { label: '🧠 語義威脅', color: 'violet' };
+    if (module === 'AI_Brain_Visual')    return { label: '👁️ 視覺威脅', color: 'blue' };
+    return { label: '🤖 AI 偵測', color: 'slate' };
+  };
+
+  const severityBadge = (severity) => {
+    if (severity === 'CRITICAL') return 'bg-red-500/15 text-red-400 border-red-500/30';
+    if (severity === 'WARNING')  return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    return 'bg-slate-500/15 text-slate-400 border-slate-500/30';
+  };
+
+  return (
+    <div className={`${theme.surface} rounded-3xl border ${theme.border} overflow-hidden transition-colors duration-300`}>
+      {/* 面板標題 */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className={`w-full flex justify-between items-center px-8 py-5 text-left ${darkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'} transition-colors`}
+      >
+        <div className="flex items-center space-x-3">
+          <span className={`text-xl ${hasCritical ? 'animate-pulse' : ''}`}>🤖</span>
+          <div>
+            <h3 className={`text-sm font-bold ${darkMode ? 'text-slate-300' : 'text-slate-600'} uppercase tracking-widest`}>
+              AI 判定告警
+            </h3>
+            <p className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
+              由本地 AI 模型（llama3 / qwen2.5-vl）即時偵測的語義與視覺威脅
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          {aiAlerts.length > 0 && (
+            <span className={`px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wider ${
+              hasCritical
+                ? 'bg-red-500/10 border-red-500/40 text-red-400 animate-pulse'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+            }`}>
+              {aiAlerts.length} 筆告警
+            </span>
+          )}
+          {expanded
+            ? <ChevronUp className={`w-4 h-4 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+            : <ChevronDown className={`w-4 h-4 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+          }
+        </div>
+      </button>
+
+      {/* 告警列表 */}
+      {expanded && (
+        <div className={`border-t ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          {aiAlerts.length === 0 ? (
+            <div className={`flex flex-col items-center justify-center py-16 space-y-3 ${darkMode ? 'text-slate-600' : 'text-slate-400'} opacity-60`}>
+              <span className="text-4xl">🧠</span>
+              <p className="text-xs font-bold uppercase tracking-widest">AI 分析中，目前沒有威脅記錄</p>
+              <p className="text-[10px]">當 guardian_brain 偵測到危險時，告警將即時顯示於此</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-dashed" style={{ borderColor: darkMode ? 'rgba(51,65,85,0.4)' : 'rgba(226,232,240,0.8)' }}>
+              {aiAlerts.map((alert, i) => {
+                const type = typeLabel(alert.module);
+                return (
+                  <div
+                    key={i}
+                    className={`flex flex-col sm:flex-row sm:items-start gap-3 px-8 py-4 transition-colors ${
+                      darkMode ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50'
+                    } ${alert.severity === 'CRITICAL' && i === 0 ? (darkMode ? 'bg-red-500/5' : 'bg-red-50/60') : ''}`}
+                  >
+                    {/* 左側：時間 + 類型 */}
+                    <div className="flex flex-col items-start gap-1.5 min-w-[140px]">
+                      <span className={`text-[10px] font-mono ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {alert.time}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        type.color === 'violet' ? 'bg-violet-500/10 text-violet-400 border-violet-500/30' :
+                        type.color === 'blue'   ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                                                  'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      }`}>
+                        {type.label}
+                      </span>
+                    </div>
+
+                    {/* 中間：訊息 + 預覽 */}
+                    <div className="flex-grow min-w-0">
+                      <p className={`text-xs font-semibold ${darkMode ? 'text-slate-200' : 'text-slate-700'} leading-snug`}>
+                        {alert.message}
+                      </p>
+                      {alert.preview && (
+                        <p className={`text-[10px] font-mono mt-1.5 px-2 py-1 rounded ${darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'} truncate`}>
+                          {alert.preview}
+                        </p>
+                      )}
+                      {alert.model && (
+                        <span className={`inline-flex mt-1.5 text-[9px] ${darkMode ? 'text-slate-600' : 'text-slate-400'}`}>
+                          模型：{alert.model}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 右側：嚴重程度 */}
+                    <div className="flex-shrink-0">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${severityBadge(alert.severity)}`}>
+                        {alert.severity}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
