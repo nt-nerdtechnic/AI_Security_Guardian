@@ -18,6 +18,7 @@ from core.monitors.active_window import ActiveWindowMonitor
 from core.monitors.keystroke import KeystrokeMonitor
 from core.monitors.network import NetworkMonitor
 from core.monitors.heartbeat import SystemHeartbeat
+from core.monitors.system_resource import SystemResourceMonitor
 
 from core.models.i18n import I18nManager
 import core.monitors.clipboard as cb_mon
@@ -25,6 +26,7 @@ import core.monitors.active_window as aw_mon
 import core.monitors.keystroke as k_mon
 import core.monitors.network as nw_mon
 import core.monitors.heartbeat as hb_mon
+import core.monitors.system_resource as sr_mon
 
 # Logger Setup
 logging.basicConfig(
@@ -88,6 +90,7 @@ def main():
     k_mon.i18n = i18n
     nw_mon.i18n = i18n
     hb_mon.i18n = i18n
+    sr_mon.i18n = i18n
     
     logger.info(i18n.get('system_starting'))
 
@@ -102,7 +105,8 @@ def main():
         ClipboardMonitor(config, notifier, ai_client=ai_client),
         ActiveWindowMonitor(config, notifier, ai_client=ai_client),
         KeystrokeMonitor(config, notifier),
-        NetworkMonitor(config, notifier)
+        NetworkMonitor(config, notifier),
+        SystemResourceMonitor(config, notifier)
     ]
 
     for m in monitors:

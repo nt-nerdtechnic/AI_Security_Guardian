@@ -25,7 +25,7 @@ const PORT_RISK_KEYS = {
   27017: { name: 'MongoDB',    riskKey: 'mongodb_risk' },
 };
 
-const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: [] }, darkMode, t: theme }) => {
+const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: [] }, sysResources, darkMode, t: theme }) => {
   const { t } = useLanguage();
   const [exposedPorts, setExposedPorts] = useState([]);
   const [aiAlerts, setAiAlerts]         = useState([]);
@@ -115,16 +115,18 @@ const ActivityDashboard = ({ stats, events = { threats: [], keys: [], visual: []
             </div>
           </div>
 
-          <div className="w-full flex-grow flex flex-col justify-start space-y-6 relative z-10">
+          <div className="w-full flex-grow flex flex-col justify-start space-y-5 relative z-10">
             <ProgressBar
-              label={t('system_stream.process_scan')}
-              status={t('system_stream.status_active')}
-              color="emerald" width="w-[85%]" darkMode={darkMode}
+              label="CPU Usage" status={`${Math.round(sysResources?.cpu || 0)}%`}
+              color="emerald" width={`${Math.round(sysResources?.cpu || 0)}%`} darkMode={darkMode}
             />
             <ProgressBar
-              label={t('system_stream.memory_buffer')}
-              status={t('system_stream.status_stable')}
-              color="blue" width="w-[42%]" darkMode={darkMode}
+              label="RAM Buffer" status={`${Math.round(sysResources?.ram || 0)}%`}
+              color="blue" width={`${Math.round(sysResources?.ram || 0)}%`} darkMode={darkMode}
+            />
+            <ProgressBar
+              label="Disk Usage" status={`${Math.round(sysResources?.disk || 0)}%`}
+              color="amber" width={`${Math.round(sysResources?.disk || 0)}%`} darkMode={darkMode}
             />
 
             <div className={`pt-4 border-t ${darkMode ? 'border-slate-800/50' : 'border-slate-200'}`}>
@@ -556,7 +558,10 @@ function ProgressBar({ label, status, color, width, darkMode }) {
         <span className={`text-${color}-400`}>{status}</span>
       </div>
       <div className={`w-full ${darkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-200 border-slate-300'} h-2 rounded-full overflow-hidden border`}>
-        <div className={`bg-gradient-to-r ${colors[color]} h-full ${width} ${color === 'emerald' ? 'animate-pulse' : ''}`} />
+        <div 
+          className={`bg-gradient-to-r ${colors[color]} h-full transition-all duration-1000 ease-out`} 
+          style={{ width: width }} 
+        />
       </div>
     </div>
   );

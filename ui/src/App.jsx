@@ -27,7 +27,7 @@ function App() {
     handleModeChange, toggleModule 
   } = useConfig();
   
-  const { stats, events, loading: stateLoading } = useGuardianState(t);
+  const { stats, events, sysResources, loading: stateLoading } = useGuardianState(t);
 
   const isLoading = configLoading || stateLoading;
 
@@ -87,7 +87,7 @@ function App() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-grow">
         {/* Left Column: Dashboard Stats */}
         <div className="md:col-span-3 flex flex-col space-y-6 pr-2">
-          <ActivityDashboard stats={stats} events={events} darkMode={darkMode} t={th} />
+          <ActivityDashboard stats={stats} events={events} sysResources={sysResources} darkMode={darkMode} t={th} />
         </div>
 
         {/* Right Column: Sidebar Controls */}

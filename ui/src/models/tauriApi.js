@@ -11,5 +11,7 @@ export const TauriApi = {
   
   getRealActivities: () => invoke('get_real_activities'),
   
+  getSystemResources: () => invoke('get_system_resources'),
+  
   // (如有其他 API 也統一放這)
 };

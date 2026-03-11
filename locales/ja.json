@@ -28,7 +28,11 @@
   "visual_snapshot_failed": "スナップショットの取得に失敗しました：{error}",
   "visual_monitor_error": "アクティブウィンドウ監視のエラー：{error}",
   "terminal_capture_failed": "ターミナルのスナップショットの取得に失敗しました：{error}",
-  "resource_cpu_high": "⚠️ [リソース監視] 高いCPU使用率を検出しました：{cpu}%",
+  "resource_cpu_high": "⚠️ [リソース警告] 高いCPU使用率を検出しました：{cpu}%",
+  "resource_ram_high": "⚠️ [リソース警告] 高いメモリ使用率を検出しました：{ram}%",
+  "resource_disk_high": "⚠️ [リソース警告] 高いディスク使用率を検出しました：{disk}%",
+  "system_resource_monitor_started": "システムリソース監視を開始しました。",
+  "system_resource_monitor_error": "システムリソース監視のエラー：{error}",
   "network_monitor_error": "ネットワーク監視のエラー (lsof)：{error}",
   "shutdown_gracefully": "Aegis Guardian を正常にシャットダウンしています...",
   "unexpected_error": "予期せぬエラー：{error}"

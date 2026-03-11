@@ -9,6 +9,7 @@ export function useGuardianState(t) {
   });
   
   const [events, setEvents] = useState({ threats: [], keys: [], visual: [] });
+  const [sysResources, setSysResources] = useState({ cpu: 0, ram: 0, disk: 0 });
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
@@ -22,9 +23,12 @@ export function useGuardianState(t) {
         keys:    realData.keys.sort(sortDesc).slice(0, 50),
         visual:  realData.visual.sort(sortDesc).slice(0, 50),
       });
+      const sysData = await TauriApi.getSystemResources();
+      setSysResources(sysData);
+
       setLoading(false);
     } catch (e) {
-      console.error("Failed to fetch stats", e);
+      console.error("Failed to fetch state", e);
       setLoading(false);
     }
   }, [t]);
@@ -36,5 +40,5 @@ export function useGuardianState(t) {
     return () => clearInterval(interval);
   }, [fetchStats]);
 
-  return { stats, events, loading };
+  return { stats, events, sysResources, loading };
 }

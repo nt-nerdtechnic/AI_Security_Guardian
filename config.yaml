@@ -57,3 +57,9 @@ webhook:
   telegram:
     bot_token: '' # 預留：將您的 Telegram Bot Token 填入此處
     chat_id: ''   # 預留：將您的 Telegram Chat ID 填入此處
+
+system_resource_monitor:
+  check_interval: 10
+  cpu_threshold_percent: 90
+  ram_threshold_percent: 90
+  disk_threshold_percent: 90

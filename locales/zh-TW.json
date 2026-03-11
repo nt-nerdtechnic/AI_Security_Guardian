@@ -28,7 +28,11 @@
   "visual_snapshot_failed": "擷取快照失敗：{error}",
   "visual_monitor_error": "視覺哨兵發生錯誤：{error}",
   "terminal_capture_failed": "擷取終端機畫面失敗：{error}",
-  "resource_cpu_high": "⚠️ [資源監控] 偵測到高 CPU 使用率：{cpu}%",
+  "resource_cpu_high": "⚠️ [資源警報] 偵測到高 CPU 使用率：{cpu}%",
+  "resource_ram_high": "⚠️ [資源警報] 偵測到高記憶體使用率：{ram}%",
+  "resource_disk_high": "⚠️ [資源警報] 偵測到高磁碟使用率：{disk}%",
+  "system_resource_monitor_started": "系統資源監控模組已啟動。",
+  "system_resource_monitor_error": "系統資源監控模組發生錯誤：{error}",
   "network_monitor_error": "網路監控發生錯誤 (lsof)：{error}",
   "shutdown_gracefully": "正在優雅關閉 Aegis Guardian...",
   "unexpected_error": "非預期錯誤：{error}"

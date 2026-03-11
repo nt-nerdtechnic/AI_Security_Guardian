@@ -29,6 +29,10 @@
   "visual_monitor_error": "Error in Active Window Monitor: {error}",
   "terminal_capture_failed": "Failed to capture terminal proof: {error}",
   "resource_cpu_high": "⚠️ [RESOURCE WATCH] High CPU usage detected: {cpu}%",
+  "resource_ram_high": "⚠️ [RESOURCE WATCH] High memory usage detected: {ram}%",
+  "resource_disk_high": "⚠️ [RESOURCE WATCH] High disk usage detected: {disk}%",
+  "system_resource_monitor_started": "System Resource Monitor started.",
+  "system_resource_monitor_error": "Error in System Resource Monitor: {error}",
   "network_monitor_error": "Error in Network Monitor (lsof): {error}",
   "shutdown_gracefully": "Shutting down Aegis Guardian gracefully...",
   "unexpected_error": "Unexpected error: {error}"

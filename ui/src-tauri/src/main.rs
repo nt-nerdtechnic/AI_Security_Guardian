@@ -22,6 +22,10 @@ use crate::network::{NetworkSentinel, ExposedPort};
 use crate::file_integrity::check_file_integrity;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::fs::File;
+use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
+use sysinfo::{System, Disks};
+use std::sync::Mutex as StdMutex;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct IncidentStats {
@@ -152,6 +156,45 @@ fn get_network_whitelist(
     whitelist::get_whitelisted_ports(&data.whitelist_conn)
         .map(|ports| ports.into_iter().map(|(p, _)| p).collect())
         .map_err(|e| e.to_string())
+}
+
+// --- Sysinfo State ---
+struct AppState {
+    sys: StdMutex<System>,
+}
+
+#[derive(Serialize)]
+struct SystemResources {
+    cpu: f32,
+    ram: f32,
+    disk: f32,
+}
+
+#[tauri::command]
+fn get_system_resources(state: State<'_, AppState>) -> Result<SystemResources, String> {
+    let mut sys = state.sys.lock().unwrap();
+    sys.refresh_cpu_usage();
+    sys.refresh_memory();
+    
+    let cpu_count = sys.cpus().len() as f32;
+    let global_cpu = sys.global_cpu_usage();
+    let cpu_usage = if cpu_count > 0.0 { global_cpu / cpu_count } else { global_cpu };
+
+    let total_ram = sys.total_memory() as f32;
+    let used_ram = sys.used_memory() as f32;
+    let ram_usage = if total_ram > 0.0 { (used_ram / total_ram) * 100.0 } else { 0.0 };
+
+    let disks = Disks::new_with_refreshed_list();
+    let mut total_disk = 0.0;
+    let mut available_disk = 0.0;
+    for disk in disks.list() {
+        total_disk += disk.total_space() as f32;
+        available_disk += disk.available_space() as f32;
+    }
+    let used_disk = total_disk - available_disk;
+    let disk_usage = if total_disk > 0.0 { (used_disk / total_disk) * 100.0 } else { 0.0 };
+
+    Ok(SystemResources { cpu: cpu_usage, ram: ram_usage, disk: disk_usage })
 }
 
 #[tauri::command]
@@ -297,11 +340,49 @@ fn main() {
         whitelist_conn: wl_conn,
     }));
 
+    // 初始化 Sysinfo 並建立 State
+    let mut sys = System::new_all();
+    sys.refresh_all();
+    let app_state = AppState { sys: StdMutex::new(sys) };
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .manage(shared_data)
+        .manage(app_state)
         .setup(|app| {
             let app_handle = app.handle().clone();
+
+            // ── Sidecar: 啟動 Python 後端 daemon ─────────────────────────────
+            let sidecar_cmd = app
+                .shell()
+                .sidecar("aegis-core-daemon")
+                .expect("[Aegis] 找不到 sidecar: aegis-core-daemon");
+
+            let (mut rx, _child) = sidecar_cmd
+                .spawn()
+                .expect("[Aegis] 無法啟動 Python 後端");
+
+            // 將 sidecar 的 stdout/stderr 轉發至 Tauri 日誌
+            tauri::async_runtime::spawn(async move {
+                while let Some(event) = rx.recv().await {
+                    match event {
+                        CommandEvent::Stdout(line) => {
+                            if let Ok(s) = String::from_utf8(line) {
+                                log::info!("[daemon] {}", s.trim_end());
+                            }
+                        }
+                        CommandEvent::Stderr(line) => {
+                            if let Ok(s) = String::from_utf8(line) {
+                                log::warn!("[daemon:err] {}", s.trim_end());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            });
+
             // ── 背景執行緒：輪詢 incidents.json，即時推送 AI 告警 ──────────
+            let app_handle = app_handle.clone();
             thread::spawn(move || {
                 let path = PathBuf::from("../logs/incidents.json");
                 let mut last_pos: u64 = 0;
@@ -360,7 +441,8 @@ fn main() {
             get_network_whitelist,
             check_file_integrity,
             quarantine::move_to_quarantine,
-            process_control::terminate_process
+            process_control::terminate_process,
+            get_system_resources
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
