@@ -9,10 +9,11 @@ logger = logging.getLogger('Aegis_Guardian')
 i18n = None
 
 class SystemResourceMonitor(threading.Thread):
-    def __init__(self, config, notifier):
+    def __init__(self, config, notifier, mitigator=None):
         super().__init__()
         self.config = config.get('system_resource_monitor', {})
         self.notifier = notifier
+        self.mitigator = mitigator
         self.daemon = True
         self.running = True
         
@@ -58,6 +59,14 @@ class SystemResourceMonitor(threading.Thread):
             message=f"High {resource_type} usage detected",
             metadata={"resource": resource_type, "value_percent": value}
         )
+        
+        if self.mitigator:
+            self.mitigator.auto_mitigate_incident(
+                module="SystemResourceMonitor",
+                severity="WARNING",
+                metadata={"resource": resource_type, "value_percent": value}
+            )
+
         # Send Telegram alert without interactive buttons for simple resource alerts
         self.notifier.send_text_alert(msg)
 

@@ -13,6 +13,7 @@ from core.models.config import ConfigModel
 from core.models.incident import IncidentLogger
 from core.viewmodels.notifier import TelegramNotifierViewModel
 from core.viewmodels.ai_client import AiBrainViewModel
+from core.viewmodels.mitigator import MitigationManager
 from core.monitors.clipboard import ClipboardMonitor
 from core.monitors.active_window import ActiveWindowMonitor
 from core.monitors.keystroke import KeystrokeMonitor
@@ -99,14 +100,15 @@ def main():
     notifier.start_polling(handle_telegram_callback)
     
     ai_client = AiBrainViewModel()
+    mitigator = MitigationManager(config)
 
     # [Controllers] 初始化並啟動監控
     monitors = [
-        ClipboardMonitor(config, notifier, ai_client=ai_client),
+        ClipboardMonitor(config, notifier, ai_client=ai_client, mitigator=mitigator),
         ActiveWindowMonitor(config, notifier, ai_client=ai_client),
         KeystrokeMonitor(config, notifier),
-        NetworkMonitor(config, notifier),
-        SystemResourceMonitor(config, notifier)
+        NetworkMonitor(config, notifier, mitigator=mitigator),
+        SystemResourceMonitor(config, notifier, mitigator=mitigator)
     ]
 
     for m in monitors:

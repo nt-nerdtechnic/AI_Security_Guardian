@@ -4,6 +4,7 @@ import { Shield, RefreshCw, Sun, Moon, Globe } from 'lucide-react';
 import ModeSwitch from './components/ModeSwitch';
 import SettingsPanel from './components/SettingsPanel';
 import ActivityDashboard from './components/ActivityDashboard';
+import MitigationPanel from './components/MitigationPanel';
 
 // I18n
 import { useLanguage } from './i18n/LanguageContext';
@@ -88,6 +89,7 @@ function App() {
         {/* Left Column: Dashboard Stats */}
         <div className="md:col-span-3 flex flex-col space-y-6 pr-2">
           <ActivityDashboard stats={stats} events={events} sysResources={sysResources} darkMode={darkMode} t={th} />
+          <MitigationPanel darkMode={darkMode} />
         </div>
 
         {/* Right Column: Sidebar Controls */}

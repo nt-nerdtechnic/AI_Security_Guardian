@@ -15,12 +15,13 @@ class ClipboardMonitor(threading.Thread):
     (Controller)
     監控剪貼簿內容，並根據 config 中的 regex 或 AI 語義分析進行比對。
     """
-    def __init__(self, config, notifier, ai_client=None):
+    def __init__(self, config, notifier, ai_client=None, mitigator=None):
         super().__init__()
         self.config = config
         self.notifier = notifier
         self.rules = config.get('behavior_firewall', {}).get('regex_rules', {})
         self.ai_client = ai_client
+        self.mitigator = mitigator
         self.daemon = True
         self.last_content = ""
         self.running = True
@@ -55,6 +56,13 @@ class ClipboardMonitor(threading.Thread):
                     message=f"Sensitive data detected (matched rule: {rule_name})",
                     metadata={"rule_name": rule_name, "preview": content[:100]}
                 )
+
+                if self.mitigator:
+                    self.mitigator.auto_mitigate_incident(
+                        module="ClipboardMonitor",
+                        severity="WARNING",
+                        metadata={"rule_name": rule_name, "preview": content[:100]}
+                    )
 
                 try:
                     pyperclip.copy("[REDACTED BY AEGIS]")

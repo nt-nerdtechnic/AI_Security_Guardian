@@ -159,42 +159,61 @@ fn get_network_whitelist(
 }
 
 // --- Sysinfo State ---
-struct AppState {
-    sys: StdMutex<System>,
-}
-
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct SystemResources {
     cpu: f32,
     ram: f32,
     disk: f32,
 }
 
+#[derive(Clone, Serialize)]
+struct ThreatProcess {
+    pid: u32,
+    name: String,
+    cpu_usage: f32,
+    memory_mb: f64,
+    status: String,
+}
+
+#[derive(Clone)]
+struct SystemInfoCache {
+    resources: SystemResources,
+    threats: Vec<ThreatProcess>,
+}
+
+struct AppState {
+    cache: Arc<StdMutex<SystemInfoCache>>,
+}
+
 #[tauri::command]
 fn get_system_resources(state: State<'_, AppState>) -> Result<SystemResources, String> {
-    let mut sys = state.sys.lock().unwrap();
-    sys.refresh_cpu_usage();
-    sys.refresh_memory();
-    
-    let cpu_count = sys.cpus().len() as f32;
-    let global_cpu = sys.global_cpu_usage();
-    let cpu_usage = if cpu_count > 0.0 { global_cpu / cpu_count } else { global_cpu };
+    let cache = state.cache.lock().unwrap();
+    Ok(cache.resources.clone())
+}
 
-    let total_ram = sys.total_memory() as f32;
-    let used_ram = sys.used_memory() as f32;
-    let ram_usage = if total_ram > 0.0 { (used_ram / total_ram) * 100.0 } else { 0.0 };
+#[tauri::command]
+fn get_threat_processes(state: State<'_, AppState>) -> Result<Vec<ThreatProcess>, String> {
+    let cache = state.cache.lock().unwrap();
+    Ok(cache.threats.clone())
+}
 
-    let disks = Disks::new_with_refreshed_list();
-    let mut total_disk = 0.0;
-    let mut available_disk = 0.0;
-    for disk in disks.list() {
-        total_disk += disk.total_space() as f32;
-        available_disk += disk.available_space() as f32;
+#[tauri::command]
+fn mitigate_process(pid: u32, action: String) -> Result<String, String> {
+    match action.as_str() {
+        "kill" => {
+            let status = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
+            if status.success() { Ok(format!("Killed PID {}", pid)) } else { Err(format!("Failed to kill PID {}", pid)) }
+        },
+        "isolate" => {
+            let status = std::process::Command::new("kill").arg("-STOP").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
+            if status.success() { Ok(format!("Isolated (Suspended) PID {}", pid)) } else { Err(format!("Failed to isolate PID {}", pid)) }
+        },
+        "resume" => {
+            let status = std::process::Command::new("kill").arg("-CONT").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
+            if status.success() { Ok(format!("Resumed PID {}", pid)) } else { Err(format!("Failed to resume PID {}", pid)) }
+        },
+        _ => Err("Unknown action".to_string())
     }
-    let used_disk = total_disk - available_disk;
-    let disk_usage = if total_disk > 0.0 { (used_disk / total_disk) * 100.0 } else { 0.0 };
-
-    Ok(SystemResources { cpu: cpu_usage, ram: ram_usage, disk: disk_usage })
 }
 
 #[tauri::command]
@@ -340,10 +359,67 @@ fn main() {
         whitelist_conn: wl_conn,
     }));
 
-    // 初始化 Sysinfo 並建立 State
-    let mut sys = System::new_all();
-    sys.refresh_all();
-    let app_state = AppState { sys: StdMutex::new(sys) };
+    // 初始化 Sysinfo 緩存 State 與背景採集執行緒
+    let cache_mutex = Arc::new(StdMutex::new(SystemInfoCache {
+        resources: SystemResources { cpu: 0.0, ram: 0.0, disk: 0.0 },
+        threats: vec![],
+    }));
+    let app_state = AppState { cache: cache_mutex.clone() };
+
+    thread::spawn(move || {
+        let mut sys = System::new_all();
+        // 第一次讓系統初始化差值所需狀態
+        sys.refresh_cpu_usage();
+        sys.refresh_memory();
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        
+        loop {
+            thread::sleep(Duration::from_millis(1500));
+            
+            sys.refresh_cpu_usage();
+            sys.refresh_memory();
+            sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+
+            let cpu_count = sys.cpus().len() as f32;
+            let global_cpu = sys.global_cpu_usage();
+            let cpu_usage = if cpu_count > 0.0 { global_cpu / cpu_count } else { global_cpu };
+
+            let total_ram = sys.total_memory() as f32;
+            let used_ram = sys.used_memory() as f32;
+            let ram_usage = if total_ram > 0.0 { (used_ram / total_ram) * 100.0 } else { 0.0 };
+
+            let disks = Disks::new_with_refreshed_list();
+            let mut total_disk = 0.0;
+            let mut available_disk = 0.0;
+            for disk in disks.list() {
+                total_disk += disk.total_space() as f32;
+                available_disk += disk.available_space() as f32;
+            }
+            let used_disk = total_disk - available_disk;
+            let disk_usage = if total_disk > 0.0 { (used_disk / total_disk) * 100.0 } else { 0.0 };
+
+            let mut procs: Vec<ThreatProcess> = sys.processes().iter()
+                .filter(|(_, p)| p.cpu_usage() > 3.0)
+                .map(|(pid, p)| {
+                    ThreatProcess {
+                        pid: pid.as_u32(),
+                        name: p.name().to_string_lossy().into_owned(),
+                        cpu_usage: p.cpu_usage(),
+                        memory_mb: (p.memory() as f64) / 1024.0 / 1024.0,
+                        status: format!("{:?}", p.status()),
+                    }
+                })
+                .collect();
+            
+            procs.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal));
+            procs.truncate(8);
+
+            if let Ok(mut cache) = cache_mutex.lock() {
+                cache.resources = SystemResources { cpu: cpu_usage, ram: ram_usage, disk: disk_usage };
+                cache.threats = procs;
+            }
+        }
+    });
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -442,7 +518,9 @@ fn main() {
             check_file_integrity,
             quarantine::move_to_quarantine,
             process_control::terminate_process,
-            get_system_resources
+            get_system_resources,
+            get_threat_processes,
+            mitigate_process
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

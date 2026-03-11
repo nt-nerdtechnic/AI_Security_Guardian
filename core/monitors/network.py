@@ -9,10 +9,11 @@ logger = logging.getLogger('Aegis_Guardian')
 i18n = None
 
 class NetworkMonitor(threading.Thread):
-    def __init__(self, config, notifier):
+    def __init__(self, config, notifier, mitigator=None):
         super().__init__()
         self.config = config.get('network_monitor', {})
         self.notifier = notifier
+        self.mitigator = mitigator
         self.daemon = True
         self.running = True
         self.interval = self.config.get('check_interval', 5)
@@ -48,6 +49,14 @@ class NetworkMonitor(threading.Thread):
                                             message="Suspicious outbound port detected",
                                             metadata={"port": port, "pid": pid, "command": command}
                                         )
+                                        
+                                        if self.mitigator:
+                                            self.mitigator.auto_mitigate_incident(
+                                                module="NetworkMonitor",
+                                                severity="WARNING",
+                                                metadata={"port": port, "pid": pid, "command": command}
+                                            )
+
                                         self.notifier.send_interactive_alert(msg, [
                                             [
                                                 {"text": "🛡️ Quarantine", "callback_data": f"quarantine|{parts[8]}"},

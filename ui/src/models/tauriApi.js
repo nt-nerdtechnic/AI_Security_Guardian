@@ -13,5 +13,9 @@ export const TauriApi = {
   
   getSystemResources: () => invoke('get_system_resources'),
   
+  getThreatProcesses: () => invoke('get_threat_processes'),
+  
+  mitigateProcess: (pid, action) => invoke('mitigate_process', { pid, action }),
+  
   // (如有其他 API 也統一放這)
 };

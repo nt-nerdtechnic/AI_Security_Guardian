@@ -63,3 +63,11 @@ system_resource_monitor:
   cpu_threshold_percent: 90
   ram_threshold_percent: 90
   disk_threshold_percent: 90
+
+mitigation:
+  auto_mitigate: false        # 是否開啟自動防禦機制（若設為 False 僅記錄/告警）
+  quarantine_dir: "quarantine"
+  actions:
+    cpu_overload: isolate_top_process
+    network_threat: kill_process
+    clipboard_threat: clear_clipboard
