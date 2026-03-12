@@ -62,7 +62,11 @@
     "confirm_quarantine": "【資安警報】\n確定要把這個檔案移至隔離區嗎？\n路徑: {path}",
     "confirm_ignore": "確定要忽略這個檔案的變動警報嗎？\n路徑: {path}",
     "time_mins_ago": "{n} 分鐘前",
-    "time_hours_ago": "{n} 小時前"
+    "time_hours_ago": "{n} 小時前",
+    "manage_paths": "管理監控路徑",
+    "add_path": "新增",
+    "remove_path": "移除",
+    "placeholder_path": "請輸入絕對路徑 (例: /Users/neillu/Desktop/...)"
   },
 
   "modes": {

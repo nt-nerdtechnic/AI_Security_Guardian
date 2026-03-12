@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::SystemTime;
+use tauri::State;
+use std::sync::{Arc, Mutex};
+use crate::SharedData;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FileIntegrityAlert {
@@ -11,16 +14,29 @@ pub struct FileIntegrityAlert {
 }
 
 #[tauri::command]
-pub fn check_file_integrity() -> Vec<FileIntegrityAlert> {
+pub fn check_file_integrity(state: State<Arc<Mutex<SharedData>>>) -> Vec<FileIntegrityAlert> {
     let mut alerts = Vec::new();
     let mut sensitive_files = vec![
         "/etc/hosts".to_string(),
         "/etc/passwd".to_string(),
     ];
 
-    // 如果能取得 HOME 目錄，則加入 SSH key 監控
+    // 如果能取得 HOME 目錄，則加入 SSH key、啟動項目及環境變數監控
     if let Ok(home) = std::env::var("HOME") {
         sensitive_files.push(format!("{}/.ssh/authorized_keys", home));
+        sensitive_files.push(format!("{}/.bash_profile", home));
+        sensitive_files.push(format!("{}/.zshrc", home));
+        sensitive_files.push(format!("{}/Library/LaunchAgents", home));
+    }
+    sensitive_files.push("/Library/LaunchDaemons".to_string());
+
+    // 讀取設定檔內的自訂路徑
+    if let Ok(data) = state.lock() {
+        for path in &data.config.file_integrity.custom_paths {
+            if !sensitive_files.contains(path) {
+                sensitive_files.push(path.clone());
+            }
+        }
     }
 
     for file in sensitive_files {

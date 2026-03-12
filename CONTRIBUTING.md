@@ -58,6 +58,14 @@ refactor: 重構 NetworkMonitor 模組
 
 不需要修改任何程式碼，直接更動 `config.yaml` 後重啟 `core/main.py` 即可生效。
 
+## 如何尋找任務
+
+我們使用 GitHub Labels 來標示適合貢獻的 Issue：
+- `good first issue`：適合對專案不熟悉的新手，通常是簡單的 bug 修復或文檔更新。
+- `help wanted`：維護者目前無法獨自處理，需要社群支援的任務。
+
+在開始工作前，請先在對應的 Issue 下留言以避免重複勞動。
+
 ## Bug 回報
 
 請至 GitHub Issues 開啟新的 Issue，並包含：

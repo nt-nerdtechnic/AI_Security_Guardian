@@ -1,35 +1,33 @@
-# Aegis Guardian (AI 資安守門員) - 獨立軟體規格書 v1.0
+# Aegis Guardian (AI 資安守門員) - 獨立軟體規格書 v1.1
 
 ## 1. 產品定義 (Product Definition)
-這是一個**輕量級、獨立運行**的桌面資安工具。它不依賴 Nerty 或其他大型 AI 平台，而是作為一個獨立的 Binary/腳本，專注於透過本地模型提供「即時螢幕監控」與「敏感行為攔截」。
+這是一個**輕量級、獨立運行**的桌面資安工具。它透過 Python 監控引擎 (Core) 與 Tauri (UI 殼層) 的協作，提供「即時螢幕監控」與「敏感行為攔截」。
 
 ## 2. 核心功能 (Standalone Features)
 
 ### A. 獨立視覺哨兵 (Isolated Visual Sentry)
-- **零依賴運行**：獨立進程，不與其他 AI 系統共用權限，專注監控桌面。
-- **特權視窗偵測**：當系統彈出權限請求 (Sudo/TCC) 或密碼輸入框時，立即捕捉快照並存證。
+- **零依賴運行**：由 Python Sidecar 獨立進程監控桌面，不干擾主系統運行。
+- **特權視窗偵測**：當偵測到敏感視窗（如 Terminal、Settings）時，啟動 AI 語義視覺分析。
 
 ### B. 本地行為防火牆 (Local Behavior Firewall)
-- **剪貼簿安全**：監控 Clipboard 內容，偵測到 API Key 或明文密碼時，主動提醒用戶清理。
-- **終端指令預審**：針對 Shell 執行的高風險關鍵字進行亞秒級攔截提醒。
+- **剪貼簿安全**：即時監控剪貼簿，偵測 API Key 或密碼，並可由 `MitigationManager` 自動清空。
+- **網路行為監控**：攔截非預期的埠口開啟或敏感連線。
 
 ### C. 物理通報網關
-- **Direct Webhook**：直接透過實體網卡發送 Telegram 警報，繞過所有中轉代理。
+- **Direct Bot Notification**：直接透過 Telegram Bot API 發送告警，無需中轉。
 
-## 3. 技術棧 (Tech Stack) - [對齊 2026-03-04 指令]
-- **核心引擎 (The Kernel)**：**Rust-Kernel** (負責物理級監控、進程管理與亞秒級攔截)
-- **AI 橋接層**：**PyO3** (將 **Python-Brain** AI 大腦嵌入 Rust 核心)
-- **視覺引擎**：OmniParser-v2.0 / Florence-2 / Qwen2.5-VL
-- **推理後端**：Ollama (Token Zero 本地推理)
-- **開發語言**：**Rust (核心)** / Python (AI 邏輯)
-- **介面層**：Tauri (基於 Rust 的跨平台 UI 框架)
-- **通報渠道**：Telegram Physical Channel (物理網關直連)
+## 3. 技術棧 (Tech Stack) - [2026-03-13 同步]
+- **監控引擎 (Core Engine)**：**Python (MVVM)** (負責行為監控、AI 調度與自動緩解)
+- **UI & 系統外殼**：**Tauri (Rust)** (負責進程生命週期管理、UI 呈現、高權限動作協作)
+- **通訊機制**：**Sidecar + NDJSON Logs** (Python 作為 Sidecar 執行，透過日誌文件共享事件)
+- **AI 大腦**：OmniParser / Florence-2 (透過 Ollama 本地推理)
+- **開發語言**：Python 3.10+ / Rust (Tauri) / TypeScript (React)
 
 ## 4. 階段開發目標 (Milestones)
-- **Phase 1**：建立 Python 原型驗證 (已完成：剪貼簿、視覺、指令攔截)。
-- **Phase 2 (衝刺中)**：**Rust 核心點火**。將 Python 驗證過的邏輯使用 Rust 重新實作，並透過 PyO3 建立「鋼鐵外骨骼」。
-- **Phase 3**：實作語義過濾器，對齊 NT 資安主權協議。
-- **Phase 4 (當前最高優先級)**：**編譯與安裝檔封裝 (Production Build)**。實作跨平台封裝邏輯，產出可執行的 `.dmg` (macOS) 與 `.exe` (Windows) 安裝檔，並整合所有本地 AI 權重依賴。
+- **Phase 1**：建立 Python 原型驗證 (已完成)。
+- **Phase 2 (現況)**：**Tauri 外殼與 Sidecar 整合**。完成 Python 監控引擎作為 Tauri Sidecar 運行，並透過日誌與 UI 即時溝通。
+- **Phase 3**：**主動緩解增強**。完整實現 `MitigationManager` 的各種自動防禦策略（如網路流量快照、檔案隔離）。
+- **Phase 4**：**編譯與安裝檔封裝 (Production Build)**。產出 `.dmg` (macOS) 與 `.exe` (Windows) 安裝檔，整合所有環境依賴。
 
 ---
-*Generated for Standalone Development by Nerty on 2026-03-03*
+*Updated for Current Architecture on 2026-03-13*

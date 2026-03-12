@@ -86,9 +86,15 @@ struct ModulesConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+struct FileIntegrityConfig {
+    custom_paths: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct GuardianConfig {
     mode: String,
     modules: ModulesConfig,
+    file_integrity: FileIntegrityConfig,
 }
 
 struct SharedData {
@@ -316,13 +322,14 @@ fn get_config(state: State<Arc<Mutex<SharedData>>>) -> Result<GuardianConfig, St
 }
 
 #[tauri::command]
-fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: ModulesConfig) -> Result<(), String> {
+fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: ModulesConfig, file_integrity: FileIntegrityConfig) -> Result<(), String> {
     let config_path = PathBuf::from("../config.yaml");
     
     {
         let mut data = state.lock().unwrap();
         data.config.mode = mode.clone();
         data.config.modules = modules.clone();
+        data.config.file_integrity = file_integrity.clone();
     }
 
     let mut new_lines = Vec::new();
@@ -331,6 +338,16 @@ fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: Mo
     new_lines.push(format!("  visual: {}", modules.visual));
     new_lines.push(format!("  clipboard: {}", modules.clipboard));
     new_lines.push(format!("  network: {}", modules.network));
+    new_lines.push("".to_string());
+    new_lines.push("file_integrity:".to_string());
+    if file_integrity.custom_paths.is_empty() {
+        new_lines.push("  custom_paths: []".to_string());
+    } else {
+        new_lines.push("  custom_paths:".to_string());
+        for path in &file_integrity.custom_paths {
+            new_lines.push(format!("    - \"{}\"", path));
+        }
+    }
 
     fs::write(config_path, new_lines.join("\n")).map_err(|e| e.to_string())?;
     let _ = fs::write("../.reload_config", "1");
@@ -349,6 +366,9 @@ fn main() {
                 visual: true,
                 clipboard: true,
                 network: true,
+            },
+            file_integrity: FileIntegrityConfig {
+                custom_paths: vec![],
             },
         },
         stats: IncidentStats {

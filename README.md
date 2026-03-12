@@ -7,10 +7,23 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Platform: macOS](https://img.shields.io/badge/Platform-macOS-lightgrey)
 ![AI Engine: Ollama](https://img.shields.io/badge/AI-Ollama%20(Local)-green)
+![Status: Experimental/Alpha](https://img.shields.io/badge/Status-Experimental%20%2F%20Alpha-orange)
+
+> [!IMPORTANT]
+> **Project Status: Experimental / Alpha**
+> This project is currently in the experimental phase. Core features are being actively developed and refined.
+>
+> **Core Focus: macOS Priority**
+> Aegis Guardian is designed with a **macOS-first** philosophy, leveraging native system APIs to provide the best security monitoring experience on Apple hardware.
 
 ---
 
 ## 繁體中文說明
+
+### 專案定位與狀態
+
+- **核心定位**：本專案以 **macOS 優先** 為核心設計理念，深度整合 macOS 系統特性以提供最精準的資安監控。
+- **目前階段**：**Experimental / Alpha**。目前處於實驗開發階段，功能可能隨時變動，建議僅用於測試與開發目的。
 
 ### 功能特色
 
@@ -39,7 +52,7 @@
 
 ```bash
 # 複製專案
-git clone https://github.com/YOUR_USERNAME/AI_Security_Guardian.git
+git clone https://github.com/nt-nerdtechnic/AI_Security_Guardian.git
 cd AI_Security_Guardian
 
 # macOS / Linux
@@ -94,6 +107,10 @@ npm run dev
 ### What is Aegis Guardian?
 
 A real-time desktop security monitor powered by **local AI (Ollama)**. It watches your clipboard, terminal inputs, active windows, and network traffic for suspicious activity — completely offline.
+
+**Key Focus:**
+- **macOS First:** Tailored specifically for macOS to leverage native APIs for deep system monitoring.
+- **Experimental Phase:** This is an **Alpha** version. Expect frequent updates and experimental features.
 
 ### Installation
 

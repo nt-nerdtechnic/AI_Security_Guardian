@@ -71,3 +71,6 @@ mitigation:
     cpu_overload: isolate_top_process
     network_threat: kill_process
     clipboard_threat: clear_clipboard
+
+file_integrity:
+  custom_paths: []
