@@ -32,28 +32,31 @@ import core.monitors.system_resource as sr_mon
 # Logger Setup
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
-logger = logging.getLogger('Aegis_Guardian')
+logger = logging.getLogger("Aegis_Guardian")
+
 
 def handle_telegram_callback(callback_query):
     """處理來自 Telegram Inline 案件的回傳資料"""
-    data = callback_query.get('data', '')
-    msg_id = callback_query.get('message', {}).get('message_id')
-    chat_id = callback_query.get('message', {}).get('chat_id')
-    bot_token = callback_query.get('bot_token')
-    
-    if '|' not in data:
+    data = callback_query.get("data", "")
+    msg_id = callback_query.get("message", {}).get("message_id")
+    chat_id = callback_query.get("message", {}).get("chat_id")
+    bot_token = callback_query.get("bot_token")
+
+    if "|" not in data:
         return
 
-    action, target_info = data.split('|', 1)
+    action, target_info = data.split("|", 1)
     response_text = ""
-    
+
     if action == "quarantine":
-        source_path = Path(target_info.split('->')[0] if '->' in target_info else target_info)
+        source_path = Path(
+            target_info.split("->")[0] if "->" in target_info else target_info
+        )
         response_text = f"✅ [遙控] 請求隔離檔案：{source_path}"
-            
+
     elif action == "terminate":
         try:
             pid = int(target_info)
@@ -63,7 +66,7 @@ def handle_telegram_callback(callback_query):
             response_text = f"✅ [成功] 已終止進程：{name} (PID: {pid})"
         except Exception as e:
             response_text = f"❌ [失敗] 無法終止進程：{e}"
-            
+
     elif action == "ignore":
         response_text = f"🙈 [已忽略] 警告：{target_info}"
 
@@ -71,34 +74,35 @@ def handle_telegram_callback(callback_query):
     payload = {
         "chat_id": chat_id,
         "message_id": msg_id,
-        "text": f"{callback_query.get('message', {}).get('text')}\n\n---\n{response_text}"
+        "text": f"{callback_query.get('message', {}).get('text')}\n\n---\n{response_text}",
     }
     requests.post(url, json=payload)
+
 
 def main():
     logger.info("Starting Aegis Guardian (MVVM Architecture)...")
     IncidentLogger.ensure_log_dir()
-    
+
     # [Model] 載入設定
     config = ConfigModel.load()
     if not config:
         return
 
     # [i18n] 注入語系檔至各模組
-    i18n = I18nManager(config.get('language', 'zh-TW'))
+    i18n = I18nManager(config.get("language", "zh-TW"))
     cb_mon.i18n = i18n
     aw_mon.i18n = i18n
     k_mon.i18n = i18n
     nw_mon.i18n = i18n
     hb_mon.i18n = i18n
     sr_mon.i18n = i18n
-    
-    logger.info(i18n.get('system_starting'))
+
+    logger.info(i18n.get("system_starting"))
 
     # [ViewModel] 初始化服務
     notifier = TelegramNotifierViewModel(config)
     notifier.start_polling(handle_telegram_callback)
-    
+
     ai_client = AiBrainViewModel()
     mitigator = MitigationManager(config)
 
@@ -108,7 +112,7 @@ def main():
         ActiveWindowMonitor(config, notifier, ai_client=ai_client),
         KeystrokeMonitor(config, notifier),
         NetworkMonitor(config, notifier, mitigator=mitigator),
-        SystemResourceMonitor(config, notifier, mitigator=mitigator)
+        SystemResourceMonitor(config, notifier, mitigator=mitigator),
     ]
 
     for m in monitors:
@@ -117,19 +121,20 @@ def main():
     heartbeat = SystemHeartbeat(monitors)
     heartbeat.start()
 
-    logger.info(i18n.get('system_starting') + " (Modules initialized)")
-    
+    logger.info(i18n.get("system_starting") + " (Modules initialized)")
+
     try:
         while True:
             time.sleep(1)
-            
+
     except KeyboardInterrupt:
-        logger.info(i18n.get('shutdown_gracefully'))
+        logger.info(i18n.get("shutdown_gracefully"))
         for m in monitors:
             m.stop()
         heartbeat.stop()
     except Exception as e:
-        logger.error(i18n.get('unexpected_error', error=e), exc_info=True)
+        logger.error(i18n.get("unexpected_error", error=e), exc_info=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger('Aegis_Guardian')
+logger = logging.getLogger("Aegis_Guardian")
 
 try:
     from guardian_brain import (
@@ -9,23 +9,30 @@ try:
         VISUAL_MODEL,
         SEMANTIC_MODEL,
     )
+
     AI_AVAILABLE = True
 except ImportError as _e:
     AI_AVAILABLE = False
-    logger.warning(f"⚠️  [AI Brain] 無法載入 guardian_brain 模組: {_e}，AI 分析功能停用。")
+    logger.warning(
+        f"⚠️  [AI Brain] 無法載入 guardian_brain 模組: {_e}，AI 分析功能停用。"
+    )
+
 
 class AiBrainViewModel:
     """
     (ViewModel / Service)
     封裝 AI 分析函數的呼叫，並提供優雅降級機制。
     """
+
     def __init__(self):
         self._available = AI_AVAILABLE
         if self._available:
             logger.info("🧠 [AI Brain] 模組載入成功，AI 分析功能已啟用。")
             logger.info(f"   視覺模型：{VISUAL_MODEL}  語義模型：{SEMANTIC_MODEL}")
         else:
-            logger.warning("⚠️  [AI Brain] guardian_brain 模組未載入，AI 分析功能停用。")
+            logger.warning(
+                "⚠️  [AI Brain] guardian_brain 模組未載入，AI 分析功能停用。"
+            )
 
     @property
     def available(self) -> bool:

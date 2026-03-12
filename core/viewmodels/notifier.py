@@ -3,17 +3,19 @@ import requests
 import time
 import threading
 
-logger = logging.getLogger('Aegis_Guardian')
+logger = logging.getLogger("Aegis_Guardian")
+
 
 class TelegramNotifierViewModel:
     """
     (ViewModel / Service)
     封裝所有向 Telegram 發送文字、截圖、互動鍵盤的邏輯。
     """
+
     def __init__(self, config):
-        self.config = config.get('webhook', {}).get('telegram', {})
-        self.bot_token = self.config.get('bot_token', '')
-        self.chat_id = self.config.get('chat_id', '')
+        self.config = config.get("webhook", {}).get("telegram", {})
+        self.bot_token = self.config.get("bot_token", "")
+        self.chat_id = self.config.get("chat_id", "")
 
     @property
     def is_configured(self):
@@ -39,14 +41,18 @@ class TelegramNotifierViewModel:
     def send_snapshot(self, filepath, caption=""):
         """透過 Telegram sendPhoto API 傳送截圖檔案"""
         if not self.is_configured:
-            logger.debug("Telegram credentials not configured. Skipping snapshot upload.")
+            logger.debug(
+                "Telegram credentials not configured. Skipping snapshot upload."
+            )
             return
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
         try:
-            with open(filepath, 'rb') as photo:
+            with open(filepath, "rb") as photo:
                 payload = {"chat_id": self.chat_id, "caption": caption[:1024]}
-                resp = requests.post(url, data=payload, files={"photo": photo}, timeout=15)
+                resp = requests.post(
+                    url, data=payload, files={"photo": photo}, timeout=15
+                )
             if resp.status_code == 200:
                 logger.debug(f"Snapshot sent to Telegram: {filepath}")
             else:
@@ -57,7 +63,9 @@ class TelegramNotifierViewModel:
     def send_interactive_alert(self, message, buttons):
         """傳送帶有 Inline Keyboard 按鈕的訊息"""
         if not self.is_configured:
-            logger.debug("Telegram credentials not configured. Skipping interactive alert.")
+            logger.debug(
+                "Telegram credentials not configured. Skipping interactive alert."
+            )
             return None
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
@@ -65,13 +73,13 @@ class TelegramNotifierViewModel:
         payload = {
             "chat_id": self.chat_id,
             "text": message,
-            "reply_markup": reply_markup
+            "reply_markup": reply_markup,
         }
         try:
             resp = requests.post(url, json=payload, timeout=5)
             if resp.status_code == 200:
                 logger.info("Interactive Telegram alert sent.")
-                return resp.json().get('result', {}).get('message_id')
+                return resp.json().get("result", {}).get("message_id")
             else:
                 logger.error(f"Failed to send interactive alert: {resp.text}")
         except Exception as e:
@@ -91,13 +99,13 @@ class TelegramNotifierViewModel:
                     url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates?offset={offset}&timeout=30"
                     resp = requests.get(url, timeout=35)
                     if resp.status_code == 200:
-                        updates = resp.json().get('result', [])
+                        updates = resp.json().get("result", [])
                         for update in updates:
-                            offset = update['update_id'] + 1
-                            if 'callback_query' in update:
+                            offset = update["update_id"] + 1
+                            if "callback_query" in update:
                                 # Inject bot_token for editMessageText usage later
-                                query = update['callback_query']
-                                query['bot_token'] = self.bot_token
+                                query = update["callback_query"]
+                                query["bot_token"] = self.bot_token
                                 callback_handler(query)
                     else:
                         time.sleep(5)

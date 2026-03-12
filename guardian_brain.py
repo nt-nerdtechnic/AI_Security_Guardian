@@ -13,20 +13,20 @@ from typing import Optional
 
 # ── 日誌設定 ────────────────────────────────────────────────────────────────
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - [Brain] %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - [Brain] %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("Aegis_Brain")
 
 # ── Ollama 設定 ──────────────────────────────────────────────────────────────
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
-VISUAL_MODEL   = "qwen2.5vl:latest"  # 多模態視覺模型
-SEMANTIC_MODEL = "llama3"            # 語義/指令分析模型
+VISUAL_MODEL = "qwen2.5vl:latest"  # 多模態視覺模型
+SEMANTIC_MODEL = "llama3"  # 語義/指令分析模型
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # 核心分析函數
 # ════════════════════════════════════════════════════════════════════════════
+
 
 def analyze_visual_threat(image_path: str) -> bool:
     """
@@ -48,7 +48,7 @@ def analyze_visual_threat(image_path: str) -> bool:
             "如果有的話回答 YES，沒有的話回答 NO。只回答 YES 或 NO。"
         )
         payload = {
-            "model":  VISUAL_MODEL,
+            "model": VISUAL_MODEL,
             "prompt": prompt,
             "images": [encoded],
             "stream": False,
@@ -84,7 +84,7 @@ def analyze_command_semantics(command: str) -> bool:
             f"分析內容：\n{command}"
         )
         payload = {
-            "model":  SEMANTIC_MODEL,
+            "model": SEMANTIC_MODEL,
             "prompt": prompt,
             "stream": False,
         }

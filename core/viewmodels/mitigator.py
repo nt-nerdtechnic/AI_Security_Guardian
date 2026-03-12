@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from core.models.incident import IncidentLogger
 
-logger = logging.getLogger('Aegis_Guardian')
+logger = logging.getLogger("Aegis_Guardian")
 
 # 由 main.py 在初始化時注入
 config_ref = {}
@@ -20,11 +20,11 @@ class MitigationManager:
     """
 
     def __init__(self, config: dict):
-        self.cfg = config.get('mitigation', {})
-        self.auto_mitigate = self.cfg.get('auto_mitigate', False)
-        self.quarantine_dir = Path(self.cfg.get('quarantine_dir', 'quarantine'))
+        self.cfg = config.get("mitigation", {})
+        self.auto_mitigate = self.cfg.get("auto_mitigate", False)
+        self.quarantine_dir = Path(self.cfg.get("quarantine_dir", "quarantine"))
         self.quarantine_dir.mkdir(parents=True, exist_ok=True)
-        self.actions_map = self.cfg.get('actions', {})
+        self.actions_map = self.cfg.get("actions", {})
 
     # ─── 公開入口：自動根據 incident 判斷動作 ─────────────────────────────
     def auto_mitigate_incident(self, module: str, severity: str, metadata: dict) -> str:
@@ -67,7 +67,7 @@ class MitigationManager:
             module="MitigationManager",
             severity="INFO",
             message=f"Auto-mitigation executed: {result}",
-            metadata={"trigger_module": module, "action": action}
+            metadata={"trigger_module": module, "action": action},
         )
         return result
 
@@ -89,7 +89,7 @@ class MitigationManager:
             return False
         except Exception as e:
             try:
-                subprocess.run(['kill', '-9', str(pid)], check=True)
+                subprocess.run(["kill", "-9", str(pid)], check=True)
                 logger.info(f"[Mitigate] SIGKILL fallback OK for PID {pid}")
                 return True
             except Exception as e2:
@@ -148,7 +148,7 @@ class MitigationManager:
                 module="MitigationManager",
                 severity="WARNING",
                 message=f"File quarantined",
-                metadata={"source": str(src), "destination": str(dst)}
+                metadata={"source": str(src), "destination": str(dst)},
             )
             return True
         except Exception as e:
@@ -159,6 +159,7 @@ class MitigationManager:
         """清空剪貼簿"""
         try:
             import pyperclip
+
             pyperclip.copy("[CLEARED BY AEGIS GUARDIAN]")
             logger.info("[Mitigate] 📋 Clipboard cleared")
             return True
@@ -172,16 +173,18 @@ class MitigationManager:
         回傳格式：[{ pid, name, cpu_percent, memory_percent, status }]
         """
         procs = []
-        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'status']):
+        for proc in psutil.process_iter(
+            ["pid", "name", "cpu_percent", "memory_percent", "status"]
+        ):
             try:
                 info = proc.info
-                if info['cpu_percent'] is not None:
+                if info["cpu_percent"] is not None:
                     procs.append(info)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
         # 給 psutil 一點時間收集 CPU 差值
         time.sleep(0.1)
-        procs.sort(key=lambda p: p['cpu_percent'] or 0, reverse=True)
+        procs.sort(key=lambda p: p["cpu_percent"] or 0, reverse=True)
         return procs[:n]
 
     # ─── 私有輔助方法 ──────────────────────────────────────────────────────
@@ -201,5 +204,5 @@ class MitigationManager:
             module="MitigationManager",
             severity="WARNING",
             message=f"Mitigation action executed: {action}",
-            metadata={"action": action, "pid": pid, "process_name": name}
+            metadata={"action": action, "pid": pid, "process_name": name},
         )
