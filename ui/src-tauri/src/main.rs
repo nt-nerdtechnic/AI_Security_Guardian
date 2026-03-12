@@ -26,6 +26,7 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use sysinfo::{System, Disks};
 use std::sync::Mutex as StdMutex;
+use tauri_plugin_shell::process::CommandChild;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct IncidentStats {
@@ -454,9 +455,14 @@ fn main() {
                 .sidecar("aegis-core-daemon")
                 .expect("[Aegis] 找不到 sidecar: aegis-core-daemon");
 
-            let (mut rx, _child) = sidecar_cmd
+            let (mut rx, child) = sidecar_cmd
                 .spawn()
                 .expect("[Aegis] 無法啟動 Python 後端");
+
+            // 將 child 保存到 state，以便後續關閉
+            let child_mutex = Arc::new(Mutex::new(Some(child)));
+            let child_for_cleanup = child_mutex.clone();
+            app.manage(child_for_cleanup);
 
             // 將 sidecar 的 stdout/stderr 轉發至 Tauri 日誌
             tauri::async_runtime::spawn(async move {
@@ -542,6 +548,17 @@ fn main() {
             get_threat_processes,
             mitigate_process
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                let child_state: State<Arc<Mutex<Option<CommandChild>>>> = app_handle.state();
+                if let Ok(mut child_lock) = child_state.lock() {
+                    if let Some(child) = child_lock.take() {
+                        log::info!("[Aegis] Shutting down Python Sidecar...");
+                        let _ = child.kill();
+                    }
+                }
+            }
+        });
 }
