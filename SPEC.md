@@ -16,18 +16,25 @@
 ### C. 物理通報網關
 - **Direct Bot Notification**：直接透過 Telegram Bot API 發送告警，無需中轉。
 
-## 3. 技術棧 (Tech Stack) - [2026-03-13 同步]
+## 3. 技術棧 (Tech Stack) - [2026-03-30 同步]
 - **監控引擎 (Core Engine)**：**Python (MVVM)** (負責行為監控、AI 調度與自動緩解)
-- **UI & 系統外殼**：**Tauri (Rust)** (負責進程生命週期管理、UI 呈現、高權限動作協作)
-- **通訊機制**：**Sidecar + NDJSON Logs** (Python 作為 Sidecar 執行，透過日誌文件共享事件)
-- **AI 大腦**：OmniParser / Florence-2 (透過 Ollama 本地推理)
-- **開發語言**：Python 3.10+ / Rust (Tauri) / TypeScript (React)
+- **UI & 系統外殼**：**Tauri v2 (Rust)** (負責 Sidecar 管理、UI 呈現、高權限動作執行)
+- **通訊機制**：**Sidecar + NDJSON Logs + Tauri IPC emit** (Python 寫入日誌，Rust tail-read 並推送前端)
+- **AI 大腦**：`llama3`（語義分析）/ `qwen2.5vl:latest`（視覺多模態）透過 Ollama 本地推理
+- **白名單持久化**：SQLite (`rusqlite` bundled)，存於 `~/.aegis-guardian/whitelist.db`
+- **開發語言**：Python 3.10+ / Rust 1.77+ (Tauri v2) / React + Vite (JSX + Tailwind CSS)
 
 ## 4. 階段開發目標 (Milestones)
-- **Phase 1**：建立 Python 原型驗證 (已完成)。
-- **Phase 2 (現況)**：**Tauri 外殼與 Sidecar 整合**。完成 Python 監控引擎作為 Tauri Sidecar 運行，並透過日誌與 UI 即時溝通。
-- **Phase 3**：**主動緩解增強**。完整實現 `MitigationManager` 的各種自動防禦策略（如網路流量快照、檔案隔離）。
-- **Phase 4**：**編譯與安裝檔封裝 (Production Build)**。產出 `.dmg` (macOS) 與 `.exe` (Windows) 安裝檔，整合所有環境依賴。
+- **Phase 1** ✅：建立 Python 原型驗證（所有監控模組、AI 腦核、Telegram 通報均完成）。
+- **Phase 2** ✅：**Tauri 外殼與 Sidecar 整合**。Python Sidecar 啟動、stdout/stderr 轉發、Rust 背景執行緒輪詢 incidents.json 並即時 emit AI 告警至 React 前端。
+- **Phase 3** ✅：**主動緩解增強**。Python `MitigationManager` 自動防禦（清空剪貼簿、終止進程、隔離檔案）與 Rust Commands（kill / isolate / resume / quarantine）均已實作完成。
+- **Phase 4** ✅：**編譯與安裝檔封裝 (Production Build)**。已產出 `AI Security Guardian_1.1.0_aarch64.dmg` 與 `.app` bundle（macOS Apple Silicon），`tauri.conf.json` 已設定 `externalBin` 打包 Sidecar binary。
+
+### 已知待改善項目
+- `whitelist.rs` 每次啟動執行 `DROP TABLE`，重啟後白名單會被清空，需改為 `CREATE TABLE IF NOT EXISTS`。
+- `file_integrity.rs` 以「24 小時內修改」為 WARNING 判斷，缺乏 checksum 機制，誤報率偏高。
+- Telegram callback 處理未驗證來源 (HMAC-SHA256)，存在偽造 callback 的遠端控制風險。
+- `update_config` Rust 側會完全覆寫 `config.yaml`，破壞 Python 側的 `behavior_firewall` / `terminal_rules` 等欄位。
 
 ---
-*Updated for Current Architecture on 2026-03-13*
+*Updated for Current Architecture on 2026-03-30*
