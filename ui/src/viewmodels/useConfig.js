@@ -8,6 +8,9 @@ export function useConfig() {
     clipboard: true,
     network: true
   });
+  const [fileIntegrity, setFileIntegrity] = useState({
+    custom_paths: []
+  });
   const [configLoading, setConfigLoading] = useState(true);
 
   const fetchConfig = useCallback(async () => {
@@ -15,6 +18,7 @@ export function useConfig() {
       const config = await TauriApi.getConfig();
       setMode(config.mode);
       setModules(config.modules);
+      setFileIntegrity(config.file_integrity || { custom_paths: [] });
       setConfigLoading(false);
     } catch (e) {
       console.error("Failed to fetch config", e);
@@ -26,9 +30,9 @@ export function useConfig() {
     fetchConfig();
   }, [fetchConfig]);
 
-  const updateConfig = async (newMode, newModules) => {
+  const updateConfig = async (newMode, newModules, newFileIntegrity = fileIntegrity) => {
     try {
-      await TauriApi.updateConfig(newMode, newModules);
+      await TauriApi.updateConfig(newMode, newModules, newFileIntegrity);
     } catch (e) {
       console.error("Failed to update config", e);
     }

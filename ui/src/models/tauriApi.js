@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 export const TauriApi = {
   getConfig: () => invoke('get_config'),
   
-  updateConfig: (mode, modules) => invoke('update_config', { mode, modules }),
+  updateConfig: (mode, modules, fileIntegrity) => invoke('update_config', { mode, modules, fileIntegrity }),
   
   getRealActivities: () => invoke('get_real_activities'),
   

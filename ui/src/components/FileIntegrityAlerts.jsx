@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileCheck, AlertTriangle, ShieldCheck, Info, Plus, Trash2, Settings2 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { TauriApi } from '../models/tauriApi';
 
 const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
     const { t } = useLanguage();
@@ -13,7 +14,7 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const cfg = await invoke('get_config');
+                const cfg = await TauriApi.getConfig();
                 setConfig(cfg);
             } catch (e) {
                 console.error("Failed to fetch config", e);
@@ -47,7 +48,7 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
             }
             if (!updatedConfig.file_integrity.custom_paths.includes(newPath)) {
                 updatedConfig.file_integrity.custom_paths.push(newPath);
-                await invoke('update_config', { mode: config.mode, modules: config.modules, fileIntegrity: updatedConfig.file_integrity });
+                await TauriApi.updateConfig(config.mode, config.modules, updatedConfig.file_integrity);
                 setConfig(updatedConfig);
                 setNewPath('');
                 // 立即重新抓一次檔案完整性
@@ -65,7 +66,7 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
             const updatedConfig = { ...config };
             if (updatedConfig.file_integrity && updatedConfig.file_integrity.custom_paths) {
                 updatedConfig.file_integrity.custom_paths = updatedConfig.file_integrity.custom_paths.filter(p => p !== pathToRemove);
-                await invoke('update_config', { mode: config.mode, modules: config.modules, fileIntegrity: updatedConfig.file_integrity });
+                await TauriApi.updateConfig(config.mode, config.modules, updatedConfig.file_integrity);
                 setConfig(updatedConfig);
                 // 更新清單
                 const data = await invoke('check_file_integrity');

@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
-use std::time::SystemTime;
-use tauri::State;
+use std::io::Read;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use sha2::{Digest, Sha256};
+use tauri::State;
 use crate::SharedData;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -11,6 +15,67 @@ pub struct FileIntegrityAlert {
     pub status: String,
     pub last_modified: String,
     pub message: String,
+}
+
+/// 基準 checksum 的儲存路徑：~/.aegis-guardian/file_checksums.json
+fn baseline_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".aegis-guardian")
+        .join("file_checksums.json")
+}
+
+/// 從磁碟讀取已知 checksum 基準表（path → sha256 hex）
+fn load_baseline() -> HashMap<String, String> {
+    let path = baseline_path();
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// 將更新後的基準表寫回磁碟
+fn save_baseline(baseline: &HashMap<String, String>) {
+    let path = baseline_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).ok();
+    }
+    if let Ok(content) = serde_json::to_string_pretty(baseline) {
+        fs::write(&path, content).ok();
+    }
+}
+
+/// 計算單一路徑的 SHA-256
+/// - 一般檔案：對檔案內容雜湊
+/// - 目錄：對排序後的子項目名稱列表雜湊（偵測新增/刪除）
+fn sha256_path(path: &str) -> Option<String> {
+    let meta = fs::metadata(path).ok()?;
+    let mut hasher = Sha256::new();
+
+    if meta.is_dir() {
+        let mut entries: Vec<String> = fs::read_dir(path)
+            .ok()?
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        entries.sort();
+        for entry in &entries {
+            hasher.update(entry.as_bytes());
+            hasher.update(b"\n");
+        }
+    } else {
+        let mut file = fs::File::open(path).ok()?;
+        let mut buf = [0u8; 65536];
+        loop {
+            let n = file.read(&mut buf).ok()?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+        }
+    }
+
+    Some(hex::encode(hasher.finalize()))
 }
 
 #[tauri::command]
@@ -39,6 +104,9 @@ pub fn check_file_integrity(state: State<Arc<Mutex<SharedData>>>) -> Vec<FileInt
         }
     }
 
+    let mut baseline = load_baseline();
+    let mut baseline_updated = false;
+
     for file in sensitive_files {
         match fs::metadata(&file) {
             Ok(metadata) => {
@@ -49,22 +117,44 @@ pub fn check_file_integrity(state: State<Arc<Mutex<SharedData>>>) -> Vec<FileInt
                     .unwrap_or_default()
                     .as_secs();
 
-                let current_time = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                // 簡單判斷：如果在最近 24 小時（86400秒）內被修改過
-                let status = if current_time > modified && current_time - modified < 86400 {
-                    "WARNING".to_string()
-                } else {
-                    "OK".to_string()
-                };
-
-                let message = if status == "WARNING" {
-                    "Recent modifications detected".to_string()
-                } else {
-                    "No recent changes".to_string()
+                let (status, message) = match sha256_path(&file) {
+                    Some(current_hash) => {
+                        match baseline.get(&file) {
+                            None => {
+                                // 首次記錄：建立基準，不視為威脅
+                                baseline.insert(file.clone(), current_hash.clone());
+                                baseline_updated = true;
+                                (
+                                    "OK".to_string(),
+                                    format!("Baseline recorded (sha256: {}...)", &current_hash[..12]),
+                                )
+                            }
+                            Some(known_hash) if known_hash == &current_hash => {
+                                (
+                                    "OK".to_string(),
+                                    format!("Checksum verified (sha256: {}...)", &current_hash[..12]),
+                                )
+                            }
+                            Some(known_hash) => {
+                                // checksum 不符 → 真實異動，觸發 WARNING
+                                (
+                                    "WARNING".to_string(),
+                                    format!(
+                                        "Checksum mismatch! expected {}... got {}...",
+                                        &known_hash[..12],
+                                        &current_hash[..12]
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    None => {
+                        // 無法讀取內容（例如權限不足），僅以 mtime 輔助提示
+                        (
+                            "INFO".to_string(),
+                            "Cannot compute checksum (permission denied)".to_string(),
+                        )
+                    }
                 };
 
                 alerts.push(FileIntegrityAlert {
@@ -75,7 +165,6 @@ pub fn check_file_integrity(state: State<Arc<Mutex<SharedData>>>) -> Vec<FileInt
                 });
             }
             Err(_) => {
-                // 若找不到檔案，或是沒有權限
                 alerts.push(FileIntegrityAlert {
                     file_path: file.clone(),
                     status: "INFO".to_string(),
@@ -84,6 +173,10 @@ pub fn check_file_integrity(state: State<Arc<Mutex<SharedData>>>) -> Vec<FileInt
                 });
             }
         }
+    }
+
+    if baseline_updated {
+        save_baseline(&baseline);
     }
 
     alerts

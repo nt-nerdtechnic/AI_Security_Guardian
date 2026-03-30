@@ -17,7 +17,7 @@ use serde_json::Value;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tauri::{State, Emitter};
+use tauri::{State, Emitter, Manager};
 use crate::network::{NetworkSentinel, ExposedPort};
 use crate::file_integrity::check_file_integrity;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
@@ -584,12 +584,19 @@ fn main() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
-                let child_state: State<Arc<Mutex<Option<CommandChild>>>> = app_handle.state();
-                if let Ok(mut child_lock) = child_state.lock() {
-                    if let Some(child) = child_lock.take() {
-                        log::info!("[Aegis] Shutting down Python Sidecar...");
-                        let _ = child.kill();
-                    }
+                let child_arc = {
+                    let child_state: State<Arc<Mutex<Option<CommandChild>>>> = app_handle.state();
+                    child_state.inner().clone()
+                };
+
+                let mut child_lock = match child_arc.lock() {
+                    Ok(lock) => lock,
+                    Err(_) => return,
+                };
+
+                if let Some(child) = child_lock.take() {
+                    log::info!("[Aegis] Shutting down Python Sidecar...");
+                    let _ = child.kill();
                 }
             }
         });
