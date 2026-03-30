@@ -25,10 +25,8 @@ pub fn init_db() -> Result<Connection> {
         std::fs::create_dir_all(parent).ok();
     }
     let conn = Connection::open(&path)?;
-    // 為了保證欄位更新，先 DROP TABLE（清除舊資料）
     conn.execute_batch(
-        "DROP TABLE IF EXISTS network_whitelist;
-         CREATE TABLE network_whitelist (
+        "CREATE TABLE IF NOT EXISTS network_whitelist (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             port          INTEGER NOT NULL UNIQUE,
             pid           INTEGER NOT NULL DEFAULT 0,
