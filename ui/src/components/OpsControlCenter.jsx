@@ -1,10 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  X, RefreshCw, CalendarClock, Server, Activity,
-  Play, Pause, Terminal,
+  X, RefreshCw, Server, Activity, CalendarClock,
+  Play, Pause, Terminal, Trash2,
 } from 'lucide-react';
 import { TauriApi } from '../models/tauriApi';
 import { useLanguage } from '../i18n/LanguageContext';
+
+// ── Confirmation dialog ───────────────────────────────────────────────────────
+function ConfirmDialog({ name, onConfirm, onCancel, t }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[22px] shadow-2xl p-6 mx-4 max-w-sm w-full">
+        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">{t('ops_center.confirm_title')}</h4>
+        <p className="text-[12px] text-slate-500 mb-4 break-all">{name}</p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >{t('ops_center.confirm_cancel')}</button>
+          <button
+            onClick={() => { onConfirm(); onCancel(); }}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 transition-colors"
+          >{t('ops_center.confirm_ok')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── KPI card ─────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, color, onClick }) {

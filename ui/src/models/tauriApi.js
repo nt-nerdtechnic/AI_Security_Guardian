@@ -17,10 +17,17 @@ export const TauriApi = {
   
   mitigateProcess: (pid, action) => invoke('mitigate_process', { pid, action }),
 
-  // Ops Center (Read-only, incremental)
+  // Ops Center — read
   opsListSystemCrontab: () => invoke('ops_list_system_crontab'),
   opsListLaunchAgents: () => invoke('ops_list_launch_agents'),
   opsListActiveSessions: () => invoke('ops_list_active_sessions'),
-  
+
+  // Ops Center — actions
+  opsKillSession:         (pid) => invoke('ops_kill_session', { pid }),
+  opsToggleLaunchAgent:   (plistPath, loaded) => invoke('ops_toggle_launch_agent', { plistPath, loaded }),
+  opsDeleteLaunchAgent:   (plistPath) => invoke('ops_delete_launch_agent', { plistPath }),
+  opsToggleCrontab:       (raw) => invoke('ops_toggle_crontab', { raw }),
+  opsDeleteCrontab:       (raw) => invoke('ops_delete_crontab', { raw }),
+
   // (如有其他 API 也統一放這)
 };

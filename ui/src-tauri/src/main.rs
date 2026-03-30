@@ -20,9 +20,9 @@ use std::time::Duration;
 use tauri::{State, Emitter, Manager};
 use crate::network::{NetworkSentinel, ExposedPort};
 use crate::file_integrity::check_file_integrity;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 use std::fs::File;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use sysinfo::{System, Disks};
@@ -67,6 +67,9 @@ struct AiAlert {
 struct OpsCrontabEntry {
     schedule: String,
     command: String,
+    name: String,
+    raw: String,
+    enabled: bool,
     source: String,
 }
 
@@ -345,48 +348,146 @@ fn get_ai_alerts() -> Result<Vec<AiAlert>, String> {
     Ok(alerts)
 }
 
-fn parse_crontab_lines(raw: &str) -> Vec<OpsCrontabEntry> {
-    raw.lines()
+fn parse_crontab_lines(raw_content: &str) -> Vec<OpsCrontabEntry> {
+    raw_content.lines()
         .filter_map(|line| {
+            let original = line.to_string();
             let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
+            if trimmed.is_empty() {
                 return None;
             }
+
+            // Determine if entry is disabled (commented-out) or enabled
+            let (content, enabled) = if trimmed.starts_with('#') {
+                let after_hash = trimmed.trim_start_matches('#').trim_start();
+                // Only treat as disabled crontab if it parses as a valid entry
+                let looks_valid = after_hash.starts_with('@') || {
+                    let tokens: Vec<&str> = after_hash.split_whitespace().collect();
+                    tokens.len() >= 6
+                };
+                if looks_valid { (after_hash, false) } else { return None; }
+            } else {
+                (trimmed, true)
+            };
 
             // 跳過環境變數設定，如 SHELL=/bin/zsh
-            if trimmed.contains('=') && !trimmed.contains(' ') {
+            if content.contains('=') && !content.contains(' ') {
                 return None;
             }
 
-            if trimmed.starts_with('@') {
-                let mut parts = trimmed.splitn(2, char::is_whitespace);
+            if content.starts_with('@') {
+                let mut parts = content.splitn(2, char::is_whitespace);
                 let schedule = parts.next()?.to_string();
                 let command = parts.next().unwrap_or("").trim().to_string();
                 if command.is_empty() {
                     return None;
                 }
+                let name = command.split('/').last().unwrap_or(&command).to_string();
                 return Some(OpsCrontabEntry {
                     schedule,
+                    name,
+                    raw: original,
+                    enabled,
                     command,
                     source: "system_crontab".to_string(),
                 });
             }
 
-            let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+            let tokens: Vec<&str> = content.split_whitespace().collect();
             if tokens.len() < 6 {
                 return None;
             }
 
             let schedule = tokens[0..5].join(" ");
             let command = tokens[5..].join(" ");
+            let name = command.split('/').last().unwrap_or(&command).to_string();
 
             Some(OpsCrontabEntry {
                 schedule,
+                name,
+                raw: original,
+                enabled,
                 command,
                 source: "system_crontab".to_string(),
             })
         })
         .collect()
+}
+
+fn write_crontab(content: &str) -> Result<(), String> {
+    let mut child = Command::new("crontab")
+        .arg("-")
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    if let Some(ref mut stdin) = child.stdin {
+        stdin.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    drop(child.stdin.take());
+    child.wait().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn ops_toggle_crontab(raw: String) -> Result<(), String> {
+    let output = Command::new("crontab").arg("-l").output().map_err(|e| e.to_string())?;
+    let current = if output.status.success() {
+        String::from_utf8_lossy(&output.stdout).to_string()
+    } else {
+        String::new()
+    };
+    let trimmed_raw = raw.trim();
+    let new_content: String = current.lines().map(|line| {
+        if line.trim() == trimmed_raw {
+            if trimmed_raw.starts_with('#') {
+                trimmed_raw.trim_start_matches('#').trim_start().to_string()
+            } else {
+                format!("#{}", trimmed_raw)
+            }
+        } else {
+            line.to_string()
+        }
+    }).collect::<Vec<_>>().join("\n") + "\n";
+    write_crontab(&new_content)
+}
+
+#[tauri::command]
+fn ops_delete_crontab(raw: String) -> Result<(), String> {
+    let output = Command::new("crontab").arg("-l").output().map_err(|e| e.to_string())?;
+    let current = if output.status.success() {
+        String::from_utf8_lossy(&output.stdout).to_string()
+    } else {
+        String::new()
+    };
+    let trimmed_raw = raw.trim();
+    let new_content: String = current.lines()
+        .filter(|line| line.trim() != trimmed_raw)
+        .collect::<Vec<_>>().join("\n") + "\n";
+    write_crontab(&new_content)
+}
+
+#[tauri::command]
+fn ops_toggle_launch_agent(plist_path: String, loaded: bool) -> Result<(), String> {
+    let action = if loaded { "unload" } else { "load" };
+    let _ = Command::new("launchctl").args([action, &plist_path]).output();
+    Ok(())
+}
+
+#[tauri::command]
+fn ops_delete_launch_agent(plist_path: String) -> Result<(), String> {
+    let _ = Command::new("launchctl").args(["unload", &plist_path]).output();
+    fs::remove_file(&plist_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn ops_kill_session(pid: u32) -> Result<(), String> {
+    let result = Command::new("kill").args(["-15", &pid.to_string()]).output();
+    if result.map(|o| o.status.success()).unwrap_or(false) {
+        return Ok(());
+    }
+    let _ = Command::new("kill").args(["-9", &pid.to_string()]).output();
+    Ok(())
 }
 
 #[tauri::command]
@@ -774,6 +875,11 @@ fn main() {
             ops_list_system_crontab,
             ops_list_launch_agents,
             ops_list_active_sessions,
+            ops_toggle_crontab,
+            ops_delete_crontab,
+            ops_toggle_launch_agent,
+            ops_delete_launch_agent,
+            ops_kill_session,
             get_exposed_ports,
             add_network_whitelist,
             remove_network_whitelist,

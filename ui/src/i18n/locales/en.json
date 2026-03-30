@@ -117,7 +117,19 @@
     "empty_sessions": "No monitored processes.",
     "empty_crontab_filter": "No entries match this filter.",
     "empty_launch_agents_filter": "No services match this filter.",
-    "empty_sessions_filter": "No processes match this filter."
+    "empty_sessions_filter": "No processes match this filter.",
+    "action_start": "Start",
+    "action_stop": "Stop",
+    "action_kill": "Kill",
+    "action_delete": "Delete",
+    "bulk_start_all": "Start All",
+    "bulk_stop_all": "Stop All",
+    "bulk_enable_all": "Enable All",
+    "bulk_disable_all": "Disable All",
+    "bulk_clear_all": "Clear All",
+    "confirm_title": "Confirm Action",
+    "confirm_ok": "Confirm",
+    "confirm_cancel": "Cancel"
   },
 
   "port_risks": {

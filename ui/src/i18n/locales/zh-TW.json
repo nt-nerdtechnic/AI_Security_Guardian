@@ -121,7 +121,19 @@
     "empty_sessions": "目前沒有監控程序。",
     "empty_crontab_filter": "此篩選條件下無項目。",
     "empty_launch_agents_filter": "此篩選條件下無服務。",
-    "empty_sessions_filter": "此篩選條件下無程序。"
+    "empty_sessions_filter": "此篩選條件下無程序。",
+    "action_start": "啟動",
+    "action_stop": "停止",
+    "action_kill": "終止",
+    "action_delete": "刪除",
+    "bulk_start_all": "全部啟動",
+    "bulk_stop_all": "全部停止",
+    "bulk_enable_all": "全部啟用",
+    "bulk_disable_all": "全部停用",
+    "bulk_clear_all": "全部清除",
+    "confirm_title": "確認操作",
+    "confirm_ok": "確認",
+    "confirm_cancel": "取消"
   },
 
   "port_risks": {

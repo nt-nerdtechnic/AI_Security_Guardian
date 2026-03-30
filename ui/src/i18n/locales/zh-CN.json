@@ -117,7 +117,19 @@
     "empty_sessions": "当前没有监控进程。",
     "empty_crontab_filter": "此筛选条件下无项目。",
     "empty_launch_agents_filter": "此筛选条件下无服务。",
-    "empty_sessions_filter": "此筛选条件下无进程。"
+    "empty_sessions_filter": "此筛选条件下无进程。",
+    "action_start": "启动",
+    "action_stop": "停止",
+    "action_kill": "终止",
+    "action_delete": "删除",
+    "bulk_start_all": "全部启动",
+    "bulk_stop_all": "全部停止",
+    "bulk_enable_all": "全部启用",
+    "bulk_disable_all": "全部停用",
+    "bulk_clear_all": "全部清除",
+    "confirm_title": "确认操作",
+    "confirm_ok": "确认",
+    "confirm_cancel": "取消"
   },
 
   "port_risks": {
