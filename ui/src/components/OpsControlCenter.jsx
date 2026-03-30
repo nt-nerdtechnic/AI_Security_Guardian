@@ -123,7 +123,7 @@ function Badge({ active, activeLabel, inactiveLabel, activeClass = 'bg-emerald-5
 }
 
 // ── Sessions section ──────────────────────────────────────────────────────────
-function SessionsSection({ sessions, loading, onRefresh, lastScanned, t }) {
+function SessionsSection({ sessions, loading, onRefresh, lastScanned, onKill, killingPids, t }) {
   const [filter, setFilter] = useState('all');
 
   const filterOpts = [
@@ -161,7 +161,9 @@ function SessionsSection({ sessions, loading, onRefresh, lastScanned, t }) {
         <Empty icon={<Activity size={28} />} text={t('ops_center.empty_sessions_filter')} />
       ) : (
         <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-0.5">
-          {visible.map((item) => (
+          {visible.map((item) => {
+            const isKilling = killingPids.has(item.pid);
+            return (
             <div
               key={item.session_id}
               className={`rounded-2xl border px-3.5 py-2.5 transition-all ${
@@ -190,9 +192,28 @@ function SessionsSection({ sessions, loading, onRefresh, lastScanned, t }) {
                   </span>
                   <span className="text-blue-400">RAM {item.memory_mb.toFixed(0)} MB</span>
                 </div>
+                <button
+                  onClick={() => !isKilling && onKill(item.pid)}
+                  disabled={isKilling}
+                  title={t('ops_center.action_kill')}
+                  className="shrink-0 px-2 py-1 text-[9px] font-bold rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-500 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-200 dark:border-rose-800/40 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isKilling ? '...' : t('ops_center.action_kill')}
+                </button>
               </div>
             </div>
-          ))}
+          );})}
+        </div>
+      )}
+
+      {visible.length > 0 && (
+        <div className="flex justify-end items-center gap-1.5 pt-1">
+          <button
+            onClick={() => visible.forEach(s => onKill(s.pid))}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border border-rose-200 dark:border-rose-800/40 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
+          >
+            <Pause size={8} />{t('ops_center.bulk_stop_all')}
+          </button>
         </div>
       )}
     </Section>
@@ -200,7 +221,7 @@ function SessionsSection({ sessions, loading, onRefresh, lastScanned, t }) {
 }
 
 // ── LaunchAgents section ──────────────────────────────────────────────────────
-function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, t }) {
+function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, onToggle, onDelete, togglingLabels, t }) {
   const [filter, setFilter] = useState('running');
 
   const filterOpts = [
@@ -240,7 +261,9 @@ function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, t }) {
         <Empty icon={<Server size={22} />} text={t('ops_center.empty_launch_agents_filter')} />
       ) : (
         <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-0.5">
-          {visible.map((agent) => (
+          {visible.map((agent) => {
+            const isToggling = togglingLabels.has(agent.label);
+            return (
             <div
               key={agent.plist_path}
               className={`rounded-xl border px-3 py-2.5 transition-all ${
@@ -257,6 +280,23 @@ function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, t }) {
                   activeClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
                 />
                 <span className="flex-1 min-w-0 text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">{agent.label}</span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => !isToggling && onToggle(agent.label, agent.plist_path, agent.loaded)}
+                    disabled={isToggling}
+                    title={agent.loaded ? t('ops_center.action_stop') : t('ops_center.action_start')}
+                    className={`p-1 rounded-lg transition-all disabled:opacity-50 ${agent.loaded ? 'text-slate-400 hover:text-amber-600' : 'text-slate-400 hover:text-emerald-600'}`}
+                  >
+                    {isToggling ? <RefreshCw size={10} className="animate-spin" /> : (agent.loaded ? <Pause size={10} /> : <Play size={10} />)}
+                  </button>
+                  <button
+                    onClick={() => onDelete(agent.label, agent.plist_path)}
+                    title={t('ops_center.action_delete')}
+                    className="p-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-all"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
               </div>
               <div className="mt-1 flex items-center gap-2 text-[9px] text-slate-400 flex-wrap">
                 <span className="font-mono truncate">{agent.program || '-'}</span>
@@ -270,7 +310,28 @@ function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, t }) {
                 )}
               </div>
             </div>
-          ))}
+          );})}
+        </div>
+      )}
+
+      {visible.length > 0 && (
+        <div className="flex justify-end items-center gap-1.5 pt-1">
+          {visible.some(a => !a.loaded) && (
+            <button
+              onClick={() => visible.filter(a => !a.loaded).forEach(a => onToggle(a.label, a.plist_path, false))}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/40 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all"
+            >
+              <Play size={8} />{t('ops_center.bulk_start_all')}
+            </button>
+          )}
+          {visible.some(a => a.loaded) && (
+            <button
+              onClick={() => visible.filter(a => a.loaded).forEach(a => onToggle(a.label, a.plist_path, true))}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border border-amber-200 dark:border-amber-800/40 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all"
+            >
+              <Pause size={8} />{t('ops_center.bulk_stop_all')}
+            </button>
+          )}
         </div>
       )}
     </Section>
@@ -278,18 +339,18 @@ function LaunchAgentsSection({ agents, loading, onRefresh, lastScanned, t }) {
 }
 
 // ── Crontab section ───────────────────────────────────────────────────────────
-function CrontabSection({ entries, loading, onRefresh, lastScanned, t }) {
+function CrontabSection({ entries, loading, onRefresh, lastScanned, onToggle, onDelete, togglingRaws, t }) {
   const [filter, setFilter] = useState('all');
 
   const filterOpts = [
     { key: 'all', label: t('ops_center.filter_all'), Icon: Activity },
-    { key: 'normal', label: t('ops_center.filter_normal'), Icon: Play },
-    { key: 'scheduled', label: t('ops_center.filter_scheduled'), Icon: CalendarClock },
+    { key: 'enabled', label: t('ops_center.filter_running'), Icon: Play },
+    { key: 'disabled', label: t('ops_center.filter_stopped'), Icon: Pause },
   ];
 
   const visible = useMemo(() => {
-    if (filter === 'normal') return entries.filter(e => !e.schedule.startsWith('@'));
-    if (filter === 'scheduled') return entries.filter(e => e.schedule.startsWith('@'));
+    if (filter === 'enabled') return entries.filter(e => e.enabled !== false);
+    if (filter === 'disabled') return entries.filter(e => e.enabled === false);
     return entries;
   }, [entries, filter]);
 
@@ -318,24 +379,65 @@ function CrontabSection({ entries, loading, onRefresh, lastScanned, t }) {
         <Empty icon={<Terminal size={22} />} text={t('ops_center.empty_crontab_filter')} />
       ) : (
         <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-0.5">
-          {visible.map((item, idx) => (
+          {visible.map((item, idx) => {
+            const isToggling = togglingRaws.has(item.raw);
+            const enabled = item.enabled !== false;
+            return (
             <div
-              key={`${item.schedule}-${idx}`}
-              className="rounded-xl border px-3 py-2.5 transition-all border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50"
+              key={`${item.raw || item.schedule}-${idx}`}
+              className={`rounded-xl border px-3 py-2.5 transition-all ${enabled ? 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50' : 'border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/20 opacity-60'}`}
             >
               <div className="flex items-center gap-2">
-                <span className="shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40">
+                <span className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border ${enabled ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}>
                   {item.schedule}
                 </span>
                 <span className="flex-1 min-w-0 text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">
-                  {item.command.split('/').slice(-1)[0] || item.command}
+                  {item.name || item.command.split('/').slice(-1)[0] || item.command}
                 </span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => !isToggling && onToggle(item.raw)}
+                    disabled={isToggling}
+                    title={enabled ? t('ops_center.action_stop') : t('ops_center.action_start')}
+                    className={`p-1 rounded-lg transition-all disabled:opacity-50 ${enabled ? 'text-slate-400 hover:text-amber-600' : 'text-slate-400 hover:text-emerald-600'}`}
+                  >
+                    {isToggling ? <RefreshCw size={10} className="animate-spin" /> : (enabled ? <Pause size={10} /> : <Play size={10} />)}
+                  </button>
+                  <button
+                    onClick={() => onDelete(item.raw, item.name || item.command)}
+                    title={t('ops_center.action_delete')}
+                    className="p-1 rounded-lg text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-all"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
               </div>
               <div className="mt-1 text-[9px] text-slate-400 font-mono truncate opacity-60">
                 {item.command}
               </div>
             </div>
-          ))}
+          );})}
+        </div>
+      )}
+
+      {visible.length > 0 && (
+        <div className="flex justify-end items-center gap-1.5 pt-1">
+          {visible.some(e => e.enabled === false) && (
+            <button
+              onClick={() => visible.filter(e => e.enabled === false).forEach(e => onToggle(e.raw))}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/40 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all"
+            >
+              <Play size={8} />{t('ops_center.bulk_enable_all')}
+            </button>
+          )}
+          {visible.some(e => e.enabled !== false) && (
+            <button
+              onClick={() => visible.filter(e => e.enabled !== false).forEach(e => onToggle(e.raw))}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border border-amber-200 dark:border-amber-800/40 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all"
+            >
+              <Pause size={8} />{t('ops_center.bulk_disable_all')}
+            </button>
+          )}
         </div>
       )}
     </Section>
@@ -357,6 +459,10 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
   const [lastSystem, setLastSystem]   = useState(null);
   const [lastSession, setLastSession] = useState(null);
   const [error, setError]             = useState('');
+  const [killingPids, setKillingPids] = useState(new Set());
+  const [togglingLabels, setTogglingLabels] = useState(new Set());
+  const [togglingRaws, setTogglingRaws] = useState(new Set());
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const loadSystem = useCallback(async () => {
     try {
@@ -402,6 +508,82 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
     return () => clearInterval(id);
   }, [loadSessions]);
 
+  const handleKillSession = useCallback(async (pid) => {
+    setKillingPids(prev => new Set([...prev, pid]));
+    try {
+      await TauriApi.opsKillSession(pid);
+      await loadSessions();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setKillingPids(prev => {
+        const s = new Set(prev);
+        s.delete(pid);
+        return s;
+      });
+    }
+  }, [loadSessions]);
+
+  const handleToggleLaunchAgent = useCallback(async (label, plistPath, loaded) => {
+    setTogglingLabels(prev => new Set([...prev, label]));
+    try {
+      await TauriApi.opsToggleLaunchAgent(plistPath, loaded);
+      await loadSystem();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTogglingLabels(prev => {
+        const s = new Set(prev);
+        s.delete(label);
+        return s;
+      });
+    }
+  }, [loadSystem]);
+
+  const handleDeleteLaunchAgent = useCallback((label, plistPath) => {
+    setConfirmDialog({
+      name: label,
+      onConfirm: async () => {
+        try {
+          await TauriApi.opsDeleteLaunchAgent(plistPath);
+          await loadSystem();
+        } catch (e) {
+          setError(String(e));
+        }
+      },
+    });
+  }, [loadSystem]);
+
+  const handleToggleCrontab = useCallback(async (raw) => {
+    setTogglingRaws(prev => new Set([...prev, raw]));
+    try {
+      await TauriApi.opsToggleCrontab(raw);
+      await loadSystem();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTogglingRaws(prev => {
+        const s = new Set(prev);
+        s.delete(raw);
+        return s;
+      });
+    }
+  }, [loadSystem]);
+
+  const handleDeleteCrontab = useCallback((raw, displayName) => {
+    setConfirmDialog({
+      name: displayName || raw,
+      onConfirm: async () => {
+        try {
+          await TauriApi.opsDeleteCrontab(raw);
+          await loadSystem();
+        } catch (e) {
+          setError(String(e));
+        }
+      },
+    });
+  }, [loadSystem]);
+
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -418,6 +600,15 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40" onClick={onClose} />
+
+      {confirmDialog && (
+        <ConfirmDialog
+          name={confirmDialog.name}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          t={t}
+        />
+      )}
 
       {/* Drawer */}
       <aside className={`fixed top-0 right-0 h-full w-[min(1040px,96vw)] z-50 border-l ${theme.border} ${theme.bg} shadow-2xl flex flex-col`}>
@@ -495,6 +686,8 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
                 loading={sessionLoading}
                 onRefresh={async () => { setSessionLoading(true); await loadSessions(); setSessionLoading(false); }}
                 lastScanned={lastSession}
+                onKill={handleKillSession}
+                killingPids={killingPids}
                 t={t}
               />
 
@@ -505,6 +698,9 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
                   loading={systemLoading}
                   onRefresh={async () => { setSystemLoading(true); await loadSystem(); setSystemLoading(false); }}
                   lastScanned={lastSystem}
+                  onToggle={handleToggleLaunchAgent}
+                  onDelete={handleDeleteLaunchAgent}
+                  togglingLabels={togglingLabels}
                   t={t}
                 />
                 <CrontabSection
@@ -512,6 +708,9 @@ const OpsControlCenter = ({ darkMode, theme, onClose }) => {
                   loading={systemLoading}
                   onRefresh={async () => { setSystemLoading(true); await loadSystem(); setSystemLoading(false); }}
                   lastScanned={lastSystem}
+                  onToggle={handleToggleCrontab}
+                  onDelete={handleDeleteCrontab}
+                  togglingRaws={togglingRaws}
                   t={t}
                 />
               </div>
