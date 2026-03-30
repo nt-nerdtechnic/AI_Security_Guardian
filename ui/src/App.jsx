@@ -1,10 +1,11 @@
 import React from 'react';
-import { Shield, RefreshCw, Sun, Moon, Globe } from 'lucide-react';
+import { Shield, RefreshCw, Sun, Moon, Globe, PanelsTopLeft } from 'lucide-react';
 
 import ModeSwitch from './components/ModeSwitch';
 import SettingsPanel from './components/SettingsPanel';
 import ActivityDashboard from './components/ActivityDashboard';
 import MitigationPanel from './components/MitigationPanel';
+import OpsControlCenter from './components/OpsControlCenter';
 
 // I18n
 import { useLanguage } from './i18n/LanguageContext';
@@ -17,6 +18,7 @@ import { useTheme } from './viewmodels/useTheme';
 
 function App() {
   // [View] 主要負責 UI 渲染，所有邏輯與狀態管理皆委派給 ViewModels
+  const [opsCenterOpen, setOpsCenterOpen] = React.useState(false);
   
   const { language, cycleLang, t } = useLanguage();
   const currentLangName = LOCALES[language]?.lang_name ?? language;
@@ -57,6 +59,16 @@ function App() {
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Ops Control Center */}
+          <button
+            onClick={() => setOpsCenterOpen(true)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full ${th.toggleBg} ${th.toggleText} transition-all duration-300 shadow-sm text-[10px] font-bold uppercase tracking-widest`}
+            title={t('ops_center.open')}
+          >
+            <PanelsTopLeft className="w-3.5 h-3.5" />
+            <span>{t('ops_center.entry')}</span>
+          </button>
+
           {/* Language Switch */}
           <button
             onClick={cycleLang}
@@ -107,6 +119,14 @@ function App() {
         <span className={`w-1 h-1 ${th.footerDot} rounded-full`} />
         <span>{t('app.footer_brand')}</span>
       </div>
+
+      {opsCenterOpen && (
+        <OpsControlCenter
+          darkMode={darkMode}
+          theme={th}
+          onClose={() => setOpsCenterOpen(false)}
+        />
+      )}
     </div>
   );
 }

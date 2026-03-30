@@ -16,6 +16,11 @@ export const TauriApi = {
   getThreatProcesses: () => invoke('get_threat_processes'),
   
   mitigateProcess: (pid, action) => invoke('mitigate_process', { pid, action }),
+
+  // Ops Center (Read-only, incremental)
+  opsListSystemCrontab: () => invoke('ops_list_system_crontab'),
+  opsListLaunchAgents: () => invoke('ops_list_launch_agents'),
+  opsListActiveSessions: () => invoke('ops_list_active_sessions'),
   
   // (如有其他 API 也統一放這)
 };

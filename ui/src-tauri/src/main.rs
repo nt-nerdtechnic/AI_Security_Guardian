@@ -22,6 +22,7 @@ use crate::network::{NetworkSentinel, ExposedPort};
 use crate::file_integrity::check_file_integrity;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::fs::File;
+use std::process::Command;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use sysinfo::{System, Disks};
@@ -60,6 +61,34 @@ struct AiAlert {
     message: String,
     preview: Option<String>,
     model: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct OpsCrontabEntry {
+    schedule: String,
+    command: String,
+    source: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct OpsLaunchAgent {
+    label: String,
+    plist_path: String,
+    program: String,
+    run_at_load: bool,
+    keep_alive: bool,
+    loaded: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct OpsSession {
+    session_id: String,
+    pid: u32,
+    name: String,
+    cpu_usage: f32,
+    memory_mb: f64,
+    status: String,
+    source: String,
 }
 
 fn parse_timestamp(ts: &str) -> (String, i64) {
@@ -316,6 +345,179 @@ fn get_ai_alerts() -> Result<Vec<AiAlert>, String> {
     Ok(alerts)
 }
 
+fn parse_crontab_lines(raw: &str) -> Vec<OpsCrontabEntry> {
+    raw.lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                return None;
+            }
+
+            // 跳過環境變數設定，如 SHELL=/bin/zsh
+            if trimmed.contains('=') && !trimmed.contains(' ') {
+                return None;
+            }
+
+            if trimmed.starts_with('@') {
+                let mut parts = trimmed.splitn(2, char::is_whitespace);
+                let schedule = parts.next()?.to_string();
+                let command = parts.next().unwrap_or("").trim().to_string();
+                if command.is_empty() {
+                    return None;
+                }
+                return Some(OpsCrontabEntry {
+                    schedule,
+                    command,
+                    source: "system_crontab".to_string(),
+                });
+            }
+
+            let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+            if tokens.len() < 6 {
+                return None;
+            }
+
+            let schedule = tokens[0..5].join(" ");
+            let command = tokens[5..].join(" ");
+
+            Some(OpsCrontabEntry {
+                schedule,
+                command,
+                source: "system_crontab".to_string(),
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn ops_list_system_crontab() -> Result<Vec<OpsCrontabEntry>, String> {
+    let output = Command::new("crontab")
+        .arg("-l")
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Ok(parse_crontab_lines(&stdout));
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // macOS 無 crontab 時會回傳 "no crontab for ..."，視為空清單
+    if stderr.to_lowercase().contains("no crontab") {
+        return Ok(vec![]);
+    }
+
+    Err(stderr.trim().to_string())
+}
+
+#[tauri::command]
+fn ops_list_launch_agents() -> Result<Vec<OpsLaunchAgent>, String> {
+    let home = dirs::home_dir().ok_or("Unable to resolve home directory".to_string())?;
+    let launch_agents_dir = home.join("Library").join("LaunchAgents");
+
+    if !launch_agents_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut result = Vec::new();
+    let entries = fs::read_dir(launch_agents_dir).map_err(|e| e.to_string())?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|v| v.to_str()) != Some("plist") {
+            continue;
+        }
+
+        let plist_path = path.to_string_lossy().to_string();
+
+        let plutil_output = Command::new("plutil")
+            .arg("-convert")
+            .arg("json")
+            .arg("-o")
+            .arg("-")
+            .arg(&plist_path)
+            .output();
+
+        let mut label = path
+            .file_stem()
+            .and_then(|v| v.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let mut program = "-".to_string();
+        let mut run_at_load = false;
+        let mut keep_alive = false;
+
+        if let Ok(output) = plutil_output {
+            if output.status.success() {
+                if let Ok(v) = serde_json::from_slice::<Value>(&output.stdout) {
+                    if let Some(v_label) = v["Label"].as_str() {
+                        label = v_label.to_string();
+                    }
+
+                    if let Some(v_program) = v["Program"].as_str() {
+                        program = v_program.to_string();
+                    } else if let Some(args) = v["ProgramArguments"].as_array() {
+                        program = args
+                            .iter()
+                            .filter_map(|item| item.as_str())
+                            .collect::<Vec<&str>>()
+                            .join(" ");
+                        if program.is_empty() {
+                            program = "-".to_string();
+                        }
+                    }
+
+                    run_at_load = v["RunAtLoad"].as_bool().unwrap_or(false);
+                    keep_alive = if v["KeepAlive"].is_boolean() {
+                        v["KeepAlive"].as_bool().unwrap_or(false)
+                    } else {
+                        v["KeepAlive"].is_object()
+                    };
+                }
+            }
+        }
+
+        let loaded = Command::new("launchctl")
+            .arg("list")
+            .arg(&label)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        result.push(OpsLaunchAgent {
+            label,
+            plist_path,
+            program,
+            run_at_load,
+            keep_alive,
+            loaded,
+        });
+    }
+
+    result.sort_by(|a, b| a.label.cmp(&b.label));
+    Ok(result)
+}
+
+#[tauri::command]
+fn ops_list_active_sessions(state: State<'_, AppState>) -> Result<Vec<OpsSession>, String> {
+    let cache = state.cache.lock().unwrap();
+    let sessions = cache
+        .threats
+        .iter()
+        .map(|p| OpsSession {
+            session_id: format!("session-{}", p.pid),
+            pid: p.pid,
+            name: p.name.clone(),
+            cpu_usage: p.cpu_usage,
+            memory_mb: p.memory_mb,
+            status: p.status.clone(),
+            source: "runtime_monitor".to_string(),
+        })
+        .collect::<Vec<_>>();
+
+    Ok(sessions)
+}
+
 #[tauri::command]
 fn get_config(state: State<Arc<Mutex<SharedData>>>) -> Result<GuardianConfig, String> {
     let data = state.lock().unwrap();
@@ -569,6 +771,9 @@ fn main() {
             get_incident_stats,
             get_real_activities,
             get_ai_alerts,
+            ops_list_system_crontab,
+            ops_list_launch_agents,
+            ops_list_active_sessions,
             get_exposed_ports,
             add_network_whitelist,
             remove_network_whitelist,
