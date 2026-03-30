@@ -1,4 +1,7 @@
 import sys
+import base64
+import hashlib
+import hmac as _hmac_mod
 import logging
 import time
 import requests
@@ -38,11 +41,67 @@ logging.basicConfig(
 logger = logging.getLogger("Aegis_Guardian")
 
 
+def _verify_telegram_callback(callback_query: dict) -> bool:
+    """驗證 Telegram callback_query 的來源合法性。
+
+    兩層防護：
+    1. 發送者身分驗證：callback_query.from.id 必須符合設定的 chat_id。
+    2. HMAC-SHA256 簽名驗證：callback_data 尾端簽名標籤必須符合，
+       防止任何人偷改 callback_data 來欺騙系統執行任意操作。
+    """
+    bot_token: str = callback_query.get("bot_token", "")
+    authorized_chat_id: str = str(callback_query.get("authorized_chat_id", ""))
+    sender_id: str = str(callback_query.get("from", {}).get("id", ""))
+
+    # ---- 驗證一：發送者身分 ----------------------------------------
+    if not authorized_chat_id or sender_id != authorized_chat_id:
+        logger.warning(
+            "[Security] Telegram callback 來自未授權 sender_id=%s "
+            "(期望對象=%s)。已丟棄。",
+            sender_id,
+            authorized_chat_id,
+        )
+        return False
+
+    # ---- 驗證二：HMAC-SHA256 簽名 ---------------------------------
+    data: str = callback_query.get("data", "")
+    parts = data.rsplit("|", 1)
+    if len(parts) != 2 or not bot_token:
+        logger.warning(
+            "[Security] Telegram callback 缺少 HMAC 標籤或 bot_token。已丟棄。"
+        )
+        return False
+
+    raw_data, received_tag = parts
+    expected_sig = _hmac_mod.new(
+        bot_token.encode("utf-8"),
+        raw_data.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()[:6]
+    expected_tag = base64.urlsafe_b64encode(expected_sig).decode("ascii")
+
+    if not _hmac_mod.compare_digest(expected_tag, received_tag):
+        logger.warning(
+            "[Security] Telegram callback HMAC 不符——可能遇到偽造攻擊。已丟棄。"
+        )
+        return False
+
+    return True
+
+
 def handle_telegram_callback(callback_query):
-    """處理來自 Telegram Inline 案件的回傳資料"""
+    """處理來自 Telegram Inline 案件的回嬹資料"""
+    # ── 來源驗證：發送者身分 + HMAC-SHA256 簽名 ─────────────────────
+    if not _verify_telegram_callback(callback_query):
+        return
+    # ───────────────────────────────────────────────────────────────────────
+
     data = callback_query.get("data", "")
+    # 剥除 HMAC 簽名標籤（最後一段），還原原始 action|target_info
+    data = data.rsplit("|", 1)[0]
+
     msg_id = callback_query.get("message", {}).get("message_id")
-    chat_id = callback_query.get("message", {}).get("chat_id")
+    chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
     bot_token = callback_query.get("bot_token")
 
     if "|" not in data:

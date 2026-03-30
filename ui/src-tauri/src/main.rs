@@ -325,7 +325,7 @@ fn get_config(state: State<Arc<Mutex<SharedData>>>) -> Result<GuardianConfig, St
 #[tauri::command]
 fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: ModulesConfig, file_integrity: FileIntegrityConfig) -> Result<(), String> {
     let config_path = PathBuf::from("../config.yaml");
-    
+
     {
         let mut data = state.lock().unwrap();
         data.config.mode = mode.clone();
@@ -333,24 +333,56 @@ fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: Mo
         data.config.file_integrity = file_integrity.clone();
     }
 
-    let mut new_lines = Vec::new();
-    new_lines.push(format!("mode: {}", mode));
-    new_lines.push("modules:".to_string());
-    new_lines.push(format!("  visual: {}", modules.visual));
-    new_lines.push(format!("  clipboard: {}", modules.clipboard));
-    new_lines.push(format!("  network: {}", modules.network));
-    new_lines.push("".to_string());
-    new_lines.push("file_integrity:".to_string());
-    if file_integrity.custom_paths.is_empty() {
-        new_lines.push("  custom_paths: []".to_string());
-    } else {
-        new_lines.push("  custom_paths:".to_string());
-        for path in &file_integrity.custom_paths {
-            new_lines.push(format!("    - \"{}\"", path));
-        }
-    }
+    // 讀取現有 YAML，保留所有 Python 側欄位，只合併更新 Rust 側管轄的欄位
+    let existing = fs::read_to_string(&config_path).unwrap_or_default();
+    let mut doc: serde_yaml::Value = serde_yaml::from_str(&existing)
+        .unwrap_or(serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
 
-    fs::write(config_path, new_lines.join("\n")).map_err(|e| e.to_string())?;
+    let map = doc.as_mapping_mut().ok_or("config.yaml 根節點不是 Mapping".to_string())?;
+
+    // 更新 mode
+    map.insert(
+        serde_yaml::Value::String("mode".to_string()),
+        serde_yaml::Value::String(mode),
+    );
+
+    // 更新 modules
+    let mut modules_map = serde_yaml::Mapping::new();
+    modules_map.insert(
+        serde_yaml::Value::String("visual".to_string()),
+        serde_yaml::Value::Bool(modules.visual),
+    );
+    modules_map.insert(
+        serde_yaml::Value::String("clipboard".to_string()),
+        serde_yaml::Value::Bool(modules.clipboard),
+    );
+    modules_map.insert(
+        serde_yaml::Value::String("network".to_string()),
+        serde_yaml::Value::Bool(modules.network),
+    );
+    map.insert(
+        serde_yaml::Value::String("modules".to_string()),
+        serde_yaml::Value::Mapping(modules_map),
+    );
+
+    // 更新 file_integrity
+    let paths_seq: serde_yaml::Value = serde_yaml::Value::Sequence(
+        file_integrity.custom_paths.iter()
+            .map(|p| serde_yaml::Value::String(p.clone()))
+            .collect(),
+    );
+    let mut fi_map = serde_yaml::Mapping::new();
+    fi_map.insert(
+        serde_yaml::Value::String("custom_paths".to_string()),
+        paths_seq,
+    );
+    map.insert(
+        serde_yaml::Value::String("file_integrity".to_string()),
+        serde_yaml::Value::Mapping(fi_map),
+    );
+
+    let yaml_str = serde_yaml::to_string(&doc).map_err(|e| e.to_string())?;
+    fs::write(&config_path, yaml_str).map_err(|e| e.to_string())?;
     let _ = fs::write("../.reload_config", "1");
     Ok(())
 }

@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import hmac as _hmac
 import logging
 import requests
 import time
@@ -60,16 +63,39 @@ class TelegramNotifierViewModel:
         except Exception as e:
             logger.error(f"Telegram snapshot upload error: {e}")
 
+    def _sign_callback_data(self, raw: str) -> str:
+        """對 callback_data 附加 HMAC-SHA256 前 6 bytes 的 base64url 簽名標籤。
+        格式：{raw_data}|{8_char_tag}
+        Telegram callback_data 上限 64 bytes，base64url(6B) = 8 chars，不超限。
+        """
+        sig = _hmac.new(
+            self.bot_token.encode("utf-8"),
+            raw.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()[:6]
+        tag = base64.urlsafe_b64encode(sig).decode("ascii")
+        return f"{raw}|{tag}"
+
     def send_interactive_alert(self, message, buttons):
-        """傳送帶有 Inline Keyboard 按鈕的訊息"""
+        """傳送帶有 Inline Keyboard 按鈕的訊息（callback_data 自動加簽）"""
         if not self.is_configured:
             logger.debug(
                 "Telegram credentials not configured. Skipping interactive alert."
             )
             return None
 
+        # 對每顆按鈕的 callback_data 附加 HMAC 簽名，防止偽造 callback
+        signed_buttons = []
+        for row in buttons:
+            signed_row = []
+            for btn in row:
+                if "callback_data" in btn:
+                    btn = {**btn, "callback_data": self._sign_callback_data(btn["callback_data"])}
+                signed_row.append(btn)
+            signed_buttons.append(signed_row)
+
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-        reply_markup = {"inline_keyboard": buttons}
+        reply_markup = {"inline_keyboard": signed_buttons}
         payload = {
             "chat_id": self.chat_id,
             "text": message,
@@ -103,9 +129,10 @@ class TelegramNotifierViewModel:
                         for update in updates:
                             offset = update["update_id"] + 1
                             if "callback_query" in update:
-                                # Inject bot_token for editMessageText usage later
+                                # 注入驗證所需欄位：bot_token 用於 HMAC，authorized_chat_id 用於身分驗證
                                 query = update["callback_query"]
                                 query["bot_token"] = self.bot_token
+                                query["authorized_chat_id"] = str(self.chat_id)
                                 callback_handler(query)
                     else:
                         time.sleep(5)
