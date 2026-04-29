@@ -4,6 +4,7 @@ import hashlib
 import hmac as _hmac_mod
 import logging
 import time
+import json
 import requests
 import psutil
 from pathlib import Path
@@ -13,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
 
 from core.models.config import ConfigModel
-from core.models.incident import IncidentLogger
+from core.models.incident import INCIDENTS_JSON, IncidentLogger
 from core.viewmodels.notifier import TelegramNotifierViewModel
 from core.viewmodels.ai_client import AiBrainViewModel
 from core.viewmodels.mitigator import MitigationManager
@@ -39,6 +40,14 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger("Aegis_Guardian")
+CALLBACK_MITIGATOR = None
+PROTECTED_PROCESS_NAMES = {
+    "kernel_task",
+    "launchd",
+    "WindowServer",
+    "loginwindow",
+    "syslogd",
+}
 
 
 def _verify_telegram_callback(callback_query: dict) -> bool:
@@ -89,6 +98,104 @@ def _verify_telegram_callback(callback_query: dict) -> bool:
     return True
 
 
+def _unsigned_callback_data(callback_query: dict) -> str:
+    data = callback_query.get("data", "")
+    return data.rsplit("|", 1)[0] if "|" in data else data
+
+
+def _metadata_path_value(metadata: dict) -> str | None:
+    for key in ("file_path", "path", "source", "source_path", "target_path"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _find_recorded_file_path(target_info: str) -> Path | None:
+    """Only allow quarantine for file paths already recorded in incidents.json."""
+    target = str(
+        Path(target_info.split("->")[0] if "->" in target_info else target_info)
+    )
+    if not INCIDENTS_JSON.exists():
+        return None
+
+    try:
+        lines = INCIDENTS_JSON.read_text(encoding="utf-8").splitlines()[-500:]
+    except Exception:
+        return None
+
+    for line in reversed(lines):
+        try:
+            incident = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        path_value = _metadata_path_value(incident.get("metadata", {}))
+        if not path_value:
+            continue
+
+        candidate = Path(path_value)
+        if str(candidate) == target and candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
+def _is_protected_pid(pid: int) -> tuple[bool, str]:
+    if pid in (0, 1):
+        return True, "critical PID"
+    if pid == psutil.Process().pid:
+        return True, "guardian process"
+    if pid == psutil.Process().ppid():
+        return True, "guardian parent process"
+
+    try:
+        proc = psutil.Process(pid)
+        if proc.name() in PROTECTED_PROCESS_NAMES:
+            return True, f"protected process name: {proc.name()}"
+    except psutil.NoSuchProcess:
+        return False, ""
+    except Exception as exc:
+        return True, f"cannot inspect process safely: {exc}"
+
+    return False, ""
+
+
+def _terminate_pid_with_audit(pid: int) -> str:
+    denied, reason = _is_protected_pid(pid)
+    if denied:
+        IncidentLogger.record(
+            module="TelegramCallback",
+            severity="WARNING",
+            message="Remote terminate denied",
+            metadata={"pid": pid, "reason": reason},
+        )
+        return f"[Denied] Remote terminate blocked for PID {pid}: {reason}"
+
+    try:
+        proc = psutil.Process(pid)
+        name = proc.name()
+        proc.terminate()
+        try:
+            proc.wait(timeout=3)
+        except psutil.TimeoutExpired:
+            proc.kill()
+        IncidentLogger.record(
+            module="TelegramCallback",
+            severity="WARNING",
+            message="Remote terminate executed",
+            metadata={"pid": pid, "process_name": name},
+        )
+        return f"[Success] Terminated process: {name} (PID: {pid})"
+    except Exception as e:
+        IncidentLogger.record(
+            module="TelegramCallback",
+            severity="ERROR",
+            message="Remote terminate failed",
+            metadata={"pid": pid, "error": str(e)},
+        )
+        return f"[Failed] Cannot terminate process: {e}"
+
+
 def handle_telegram_callback(callback_query):
     """處理來自 Telegram Inline 案件的回嬹資料"""
     # ── 來源驗證：發送者身分 + HMAC-SHA256 簽名 ─────────────────────
@@ -96,9 +203,8 @@ def handle_telegram_callback(callback_query):
         return
     # ───────────────────────────────────────────────────────────────────────
 
-    data = callback_query.get("data", "")
     # 剥除 HMAC 簽名標籤（最後一段），還原原始 action|target_info
-    data = data.rsplit("|", 1)[0]
+    data = _unsigned_callback_data(callback_query)
 
     msg_id = callback_query.get("message", {}).get("message_id")
     chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
@@ -111,23 +217,37 @@ def handle_telegram_callback(callback_query):
     response_text = ""
 
     if action == "quarantine":
-        source_path = Path(
-            target_info.split("->")[0] if "->" in target_info else target_info
-        )
-        response_text = f"✅ [遙控] 請求隔離檔案：{source_path}"
+        source_path = _find_recorded_file_path(target_info)
+        if not source_path:
+            IncidentLogger.record(
+                module="TelegramCallback",
+                severity="WARNING",
+                message="Remote quarantine denied",
+                metadata={
+                    "target": target_info,
+                    "reason": "path not found in incident metadata",
+                },
+            )
+            response_text = "[Denied] Quarantine target was not found in recorded incident metadata."
+        elif CALLBACK_MITIGATOR is None:
+            response_text = "[Failed] Mitigation manager is not available."
+        else:
+            ok = CALLBACK_MITIGATOR.quarantine_file(str(source_path))
+            response_text = (
+                f"[Success] Quarantined file: {source_path}"
+                if ok
+                else f"[Failed] Could not quarantine file: {source_path}"
+            )
 
     elif action == "terminate":
         try:
             pid = int(target_info)
-            p = psutil.Process(pid)
-            name = p.name()
-            p.terminate()
-            response_text = f"✅ [成功] 已終止進程：{name} (PID: {pid})"
+            response_text = _terminate_pid_with_audit(pid)
         except Exception as e:
-            response_text = f"❌ [失敗] 無法終止進程：{e}"
+            response_text = f"[Failed] Invalid terminate request: {e}"
 
     elif action == "ignore":
-        response_text = f"🙈 [已忽略] 警告：{target_info}"
+        response_text = f"[Ignored] Warning: {target_info}"
 
     url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
     payload = {
@@ -139,6 +259,7 @@ def handle_telegram_callback(callback_query):
 
 
 def main():
+    global CALLBACK_MITIGATOR
     logger.info("Starting Aegis Guardian (MVVM Architecture)...")
     IncidentLogger.ensure_log_dir()
 
@@ -160,19 +281,35 @@ def main():
 
     # [ViewModel] 初始化服務
     notifier = TelegramNotifierViewModel(config)
-    notifier.start_polling(handle_telegram_callback)
 
     ai_client = AiBrainViewModel()
     mitigator = MitigationManager(config)
+    CALLBACK_MITIGATOR = mitigator
+    notifier.start_polling(handle_telegram_callback)
 
     # [Controllers] 初始化並啟動監控
-    monitors = [
-        ClipboardMonitor(config, notifier, ai_client=ai_client, mitigator=mitigator),
-        ActiveWindowMonitor(config, notifier, ai_client=ai_client),
-        KeystrokeMonitor(config, notifier),
-        NetworkMonitor(config, notifier, mitigator=mitigator),
-        SystemResourceMonitor(config, notifier, mitigator=mitigator),
-    ]
+    monitors = []
+
+    # 根據 config.yaml 中的 modules 設定決定是否啟動特定模組
+    modules_cfg = config.get("modules", {})
+
+    if modules_cfg.get("clipboard", True):
+        monitors.append(
+            ClipboardMonitor(config, notifier, ai_client=ai_client, mitigator=mitigator)
+        )
+        logger.info("✅ Clipboard Monitor enabled.")
+
+    if modules_cfg.get("visual", True):
+        monitors.append(ActiveWindowMonitor(config, notifier, ai_client=ai_client))
+        logger.info("✅ Visual Sentry (Active Window) enabled.")
+
+    if modules_cfg.get("network", True):
+        monitors.append(NetworkMonitor(config, notifier, mitigator=mitigator))
+        logger.info("✅ Network Monitor enabled.")
+
+    # 其他預設開啟或必要的監控
+    monitors.append(KeystrokeMonitor(config, notifier))
+    monitors.append(SystemResourceMonitor(config, notifier, mitigator=mitigator))
 
     for m in monitors:
         m.start()

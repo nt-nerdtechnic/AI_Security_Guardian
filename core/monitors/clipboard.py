@@ -91,7 +91,8 @@ class ClipboardMonitor(threading.Thread):
 
         if not regex_triggered and self.ai_client and self.ai_client.available:
             logger.info("🧠 [AI Brain] 剪貼簿未命中 regex，啟動 AI 語義分析...")
-            is_threat = self.ai_client.analyze_semantic(content)
+            analysis = self.ai_client.analyze_semantic_detailed(content)
+            is_threat = analysis.get("verdict") in {"suspicious", "threat"}
             if is_threat:
                 ai_msg = (
                     "🤖 [AI 判定] 剪貼簿內容觸發語義威脅警報："
@@ -102,7 +103,11 @@ class ClipboardMonitor(threading.Thread):
                     module="AI_Brain_Clipboard",
                     severity="CRITICAL",
                     message="AI 語義分析判定剪貼簿內容具高危險性",
-                    metadata={"preview": content[:200], "model": "llama3"},
+                    metadata={
+                        "preview": content[:200],
+                        "model": self.ai_client.semantic_model,
+                        "analysis": analysis,
+                    },
                 )
                 try:
                     pyperclip.copy("[AI REDACTED BY AEGIS]")

@@ -45,6 +45,14 @@ visual_sentry:
   # 截圖自動輪轉設定：logs/ 目錄中最多保留幾張截圖（超過會自動刪除最舊的）
   max_snapshots: 50
 
+ai:
+  ollama_url: "http://localhost:11434/api/generate"
+  models:
+    semantic: "llama3"
+    visual: "qwen2.5vl:latest"
+  # Rule packs are YAML/JSON data files only. Do not load executable code here.
+  rule_packs: []
+
 network_monitor:
   # 網路由監控設定
   check_interval: 5  # 每 5 秒檢查一次

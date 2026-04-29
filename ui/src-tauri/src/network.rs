@@ -11,7 +11,6 @@ pub struct ExposedPort {
     pub ignored: bool,
 }
 
-
 pub struct NetworkSentinel {
     monitored_ports: Vec<u16>,
 }
@@ -25,7 +24,7 @@ impl NetworkSentinel {
 
     pub fn scan_local_ports(&self) -> Vec<ExposedPort> {
         let mut exposed_ports = Vec::new();
-        
+
         let output = Command::new("lsof")
             .args(["-iTCP", "-sTCP:LISTEN", "-n", "-P", "-Fpcn"])
             .output();
@@ -36,12 +35,12 @@ impl NetworkSentinel {
             let mut current_process_name = String::new();
 
             for line in output_str.lines() {
-                if line.starts_with('p') {
-                    if let Ok(pid) = line[1..].parse::<u32>() {
+                if let Some(pid_text) = line.strip_prefix('p') {
+                    if let Ok(pid) = pid_text.parse::<u32>() {
                         current_pid = pid;
                     }
-                } else if line.starts_with('c') {
-                    current_process_name = line[1..].to_string();
+                } else if let Some(process_name) = line.strip_prefix('c') {
+                    current_process_name = process_name.to_string();
                 } else if line.starts_with('n') {
                     if let Some(colon_idx) = line.rfind(':') {
                         if let Ok(port) = line[colon_idx + 1..].parse::<u16>() {
@@ -61,7 +60,7 @@ impl NetworkSentinel {
                 }
             }
         }
-        
+
         exposed_ports
     }
 }

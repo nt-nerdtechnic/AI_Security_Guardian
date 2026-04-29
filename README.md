@@ -6,6 +6,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Platform: macOS](https://img.shields.io/badge/Platform-macOS-lightgrey)
+![Windows: Experimental](https://img.shields.io/badge/Windows-Experimental-yellow)
 ![AI Engine: Ollama](https://img.shields.io/badge/AI-Ollama%20(Local)-green)
 ![Status: Experimental/Alpha](https://img.shields.io/badge/Status-Experimental%20%2F%20Alpha-orange)
 
@@ -24,6 +25,7 @@
 
 - **核心定位**：本專案以 **macOS 優先** 為核心設計理念，深度整合 macOS 系統特性以提供最精準的資安監控。
 - **目前階段**：**Experimental / Alpha**。目前處於實驗開發階段，功能可能隨時變動，建議僅用於測試與開發目的。
+- **Windows 狀態**：目前僅完成 installer target 與 CI 檢查盤點，仍屬 experimental；核心監控仍有 `lsof`、`kill`、LaunchAgents、`HOME` 等 macOS-first 實作尚待平台分支。
 
 ### 功能特色
 
@@ -34,10 +36,12 @@
 | 💻 **終端指令預審** | 攔截高風險 Shell 指令關鍵字（如 `rm -rf /`、`nc -e`）|
 | 🌐 **網路異常監控** | 偵測可疑連線埠與大流量進出 |
 | 📲 **Telegram 即時通報** | 威脅事件自動推送 Telegram |
+| 🧾 **檔案完整性 Baseline** | 以 SHA-256 baseline 偵測敏感檔案與目錄變更，可接受變更、重建 baseline、匯出報告 |
 
 ### 系統需求
 
 - **作業系統**: macOS 12+ (Monterey 以上)
+- **Windows**: Experimental packaging only; not yet a fully supported runtime target.
 - **Python**: 3.10+
 - **Node.js**: 18+（UI 開發時需要）
 - **Ollama**: 最新版本（見下方安裝說明）

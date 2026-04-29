@@ -3,31 +3,32 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod network;
 mod file_integrity;
-mod whitelist;
-pub mod quarantine;
+mod network;
 pub mod process_control;
+pub mod quarantine;
+mod whitelist;
 
+use crate::file_integrity::check_file_integrity;
+use crate::network::{ExposedPort, NetworkSentinel};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::PathBuf;
 use serde_json::Value;
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex as StdMutex;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tauri::{State, Emitter, Manager};
-use crate::network::{NetworkSentinel, ExposedPort};
-use crate::file_integrity::check_file_integrity;
-use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
-use std::fs::File;
-use std::process::{Command, Stdio};
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandEvent;
-use sysinfo::{System, Disks};
-use std::sync::Mutex as StdMutex;
+use sysinfo::{Disks, System};
+use tauri::{Emitter, Manager, State};
 use tauri_plugin_shell::process::CommandChild;
+use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::ShellExt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct IncidentStats {
@@ -56,7 +57,7 @@ struct RealActivities {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AiAlert {
     time: String,
-    module: String,      // AI_Brain_Clipboard | AI_Brain_Visual
+    module: String, // AI_Brain_Clipboard | AI_Brain_Visual
     severity: String,
     message: String,
     preview: Option<String>,
@@ -105,9 +106,7 @@ fn parse_timestamp(ts: &str) -> (String, i64) {
             let ts_ms = dt.and_utc().timestamp_millis();
             (time_str, ts_ms)
         }
-        Err(_) => {
-            ("00:00:00".to_string(), 0)
-        }
+        Err(_) => ("00:00:00".to_string(), 0),
     }
 }
 
@@ -138,6 +137,99 @@ struct SharedData {
 
 // ─── Tauri Commands ────────────────────────────────────────────────────────
 
+fn repo_root_from_cwd() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    for candidate in cwd.ancestors() {
+        if candidate.join("config.yaml").exists() && candidate.join("core").exists() {
+            return Some(candidate.to_path_buf());
+        }
+    }
+    None
+}
+
+fn resolve_config_path() -> PathBuf {
+    if let Ok(path) = std::env::var("AEGIS_CONFIG_PATH") {
+        return PathBuf::from(path);
+    }
+
+    if let Some(root) = repo_root_from_cwd() {
+        return root.join("config.yaml");
+    }
+
+    PathBuf::from("../config.yaml")
+}
+
+fn reload_marker_for_config(config_path: &Path) -> PathBuf {
+    config_path
+        .parent()
+        .map(|parent| parent.join(".reload_config"))
+        .unwrap_or_else(|| PathBuf::from("../.reload_config"))
+}
+
+fn merge_config_yaml(
+    existing: &str,
+    mode: &str,
+    modules: &ModulesConfig,
+    file_integrity: &FileIntegrityConfig,
+) -> Result<String, String> {
+    let mut doc: serde_yaml::Value = serde_yaml::from_str(existing)
+        .map_err(|e| format!("解析 config.yaml 失敗 (可能包含無效格式): {}", e))?;
+
+    let map = doc
+        .as_mapping_mut()
+        .ok_or("config.yaml 根節點不是 Mapping 物件")?;
+
+    map.insert(
+        serde_yaml::Value::String("mode".to_string()),
+        serde_yaml::Value::String(mode.to_string()),
+    );
+
+    let modules_key = serde_yaml::Value::String("modules".to_string());
+    if !map.contains_key(&modules_key) {
+        map.insert(
+            modules_key.clone(),
+            serde_yaml::Value::Mapping(serde_yaml::Mapping::new()),
+        );
+    }
+    if let Some(m_val) = map.get_mut(&modules_key).and_then(|v| v.as_mapping_mut()) {
+        m_val.insert(
+            serde_yaml::Value::String("visual".to_string()),
+            serde_yaml::Value::Bool(modules.visual),
+        );
+        m_val.insert(
+            serde_yaml::Value::String("clipboard".to_string()),
+            serde_yaml::Value::Bool(modules.clipboard),
+        );
+        m_val.insert(
+            serde_yaml::Value::String("network".to_string()),
+            serde_yaml::Value::Bool(modules.network),
+        );
+    }
+
+    let fi_key = serde_yaml::Value::String("file_integrity".to_string());
+    if !map.contains_key(&fi_key) {
+        map.insert(
+            fi_key.clone(),
+            serde_yaml::Value::Mapping(serde_yaml::Mapping::new()),
+        );
+    }
+    if let Some(fi_val) = map.get_mut(&fi_key).and_then(|v| v.as_mapping_mut()) {
+        let paths_seq = serde_yaml::Value::Sequence(
+            file_integrity
+                .custom_paths
+                .iter()
+                .map(|p| serde_yaml::Value::String(p.clone()))
+                .collect(),
+        );
+        fi_val.insert(
+            serde_yaml::Value::String("custom_paths".to_string()),
+            paths_seq,
+        );
+    }
+
+    serde_yaml::to_string(&doc).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_exposed_ports(state: State<Arc<Mutex<SharedData>>>) -> Vec<ExposedPort> {
     let data = state.lock().unwrap();
@@ -150,14 +242,13 @@ fn get_exposed_ports(state: State<Arc<Mutex<SharedData>>>) -> Vec<ExposedPort> {
     // 清理資料庫中已經失效的白名單（如果原本的服務已關閉，就把該 port 從白名單移除）
     let _ = whitelist::cleanup_stale_whitelist(&data.whitelist_conn, &active_ports_and_pids);
 
-    // 從 DB 取得最新白名單 (port, pid)，過濾回傳
-    let whitelisted = whitelist::get_whitelisted_ports(&data.whitelist_conn)
-        .unwrap_or_default();
+    let whitelisted = whitelist::get_whitelisted_ports(&data.whitelist_conn).unwrap_or_default();
+    let whitelisted_ports: Vec<u16> = whitelisted.into_iter().map(|(p, _)| p).collect();
 
     ports
         .into_iter()
         .map(|mut p| {
-            if whitelisted.contains(&(p.port, p.pid)) {
+            if whitelisted_ports.contains(&p.port) {
                 p.ignored = true;
             }
             p
@@ -178,19 +269,13 @@ fn add_network_whitelist(
 }
 
 #[tauri::command]
-fn remove_network_whitelist(
-    state: State<Arc<Mutex<SharedData>>>,
-    port: u16,
-) -> Result<(), String> {
+fn remove_network_whitelist(state: State<Arc<Mutex<SharedData>>>, port: u16) -> Result<(), String> {
     let data = state.lock().unwrap();
-    whitelist::remove_whitelist(&data.whitelist_conn, port)
-        .map_err(|e| e.to_string())
+    whitelist::remove_whitelist(&data.whitelist_conn, port).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn get_network_whitelist(
-    state: State<Arc<Mutex<SharedData>>>,
-) -> Result<Vec<u16>, String> {
+fn get_network_whitelist(state: State<Arc<Mutex<SharedData>>>) -> Result<Vec<u16>, String> {
     let data = state.lock().unwrap();
     whitelist::get_whitelisted_ports(&data.whitelist_conn)
         .map(|ports| ports.into_iter().map(|(p, _)| p).collect())
@@ -240,18 +325,42 @@ fn get_threat_processes(state: State<'_, AppState>) -> Result<Vec<ThreatProcess>
 fn mitigate_process(pid: u32, action: String) -> Result<String, String> {
     match action.as_str() {
         "kill" => {
-            let status = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
-            if status.success() { Ok(format!("Killed PID {}", pid)) } else { Err(format!("Failed to kill PID {}", pid)) }
-        },
+            let status = std::process::Command::new("kill")
+                .arg("-9")
+                .arg(pid.to_string())
+                .status()
+                .map_err(|e| e.to_string())?;
+            if status.success() {
+                Ok(format!("Killed PID {}", pid))
+            } else {
+                Err(format!("Failed to kill PID {}", pid))
+            }
+        }
         "isolate" => {
-            let status = std::process::Command::new("kill").arg("-STOP").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
-            if status.success() { Ok(format!("Isolated (Suspended) PID {}", pid)) } else { Err(format!("Failed to isolate PID {}", pid)) }
-        },
+            let status = std::process::Command::new("kill")
+                .arg("-STOP")
+                .arg(pid.to_string())
+                .status()
+                .map_err(|e| e.to_string())?;
+            if status.success() {
+                Ok(format!("Isolated (Suspended) PID {}", pid))
+            } else {
+                Err(format!("Failed to isolate PID {}", pid))
+            }
+        }
         "resume" => {
-            let status = std::process::Command::new("kill").arg("-CONT").arg(pid.to_string()).status().map_err(|e| e.to_string())?;
-            if status.success() { Ok(format!("Resumed PID {}", pid)) } else { Err(format!("Failed to resume PID {}", pid)) }
-        },
-        _ => Err("Unknown action".to_string())
+            let status = std::process::Command::new("kill")
+                .arg("-CONT")
+                .arg(pid.to_string())
+                .status()
+                .map_err(|e| e.to_string())?;
+            if status.success() {
+                Ok(format!("Resumed PID {}", pid))
+            } else {
+                Err(format!("Failed to resume PID {}", pid))
+            }
+        }
+        _ => Err("Unknown action".to_string()),
     }
 }
 
@@ -275,20 +384,20 @@ fn get_real_activities() -> Result<RealActivities, String> {
     let path = PathBuf::from("../logs/incidents.json");
     if let Ok(file) = File::open(path) {
         let reader = BufReader::new(file);
-        for line in reader.lines().filter_map(|l| l.ok()) {
+        for line in reader.lines().map_while(Result::ok) {
             if let Ok(v) = serde_json::from_str::<Value>(&line) {
                 let module = v["module"].as_str().unwrap_or("Unknown").to_string();
                 let severity = v["severity"].as_str().unwrap_or("INFO");
                 let message = v["message"].as_str().unwrap_or("").to_string();
                 let timestamp_str = v["timestamp"].as_str().unwrap_or("");
-                
+
                 let (time, _ts) = parse_timestamp(timestamp_str);
-                
+
                 // Skip info logs like "Log Initialized" to not clutter the UI
                 if severity == "INFO" {
                     continue;
                 }
-                
+
                 let event = GuardianEvent {
                     time,
                     source: module.clone(),
@@ -296,9 +405,14 @@ fn get_real_activities() -> Result<RealActivities, String> {
                     _ts,
                 };
 
-                if module == "NetworkMonitor" || module == "SystemFirewall" || severity == "CRITICAL" {
+                if module == "NetworkMonitor"
+                    || module == "SystemFirewall"
+                    || severity == "CRITICAL"
+                {
                     stats.total_blocked += 1;
-                    if severity != "INFO" { threats.push(event); }
+                    if severity != "INFO" {
+                        threats.push(event);
+                    }
                 } else if module == "ClipboardMonitor" || module == "TerminalFirewall" {
                     stats.sensitive_keys += 1;
                     keys.push(event);
@@ -325,7 +439,7 @@ fn get_ai_alerts() -> Result<Vec<AiAlert>, String> {
     let path = PathBuf::from("../logs/incidents.json");
     if let Ok(file) = File::open(&path) {
         let reader = BufReader::new(file);
-        for line in reader.lines().filter_map(|l| l.ok()) {
+        for line in reader.lines().map_while(Result::ok) {
             if let Ok(v) = serde_json::from_str::<Value>(&line) {
                 let module = v["module"].as_str().unwrap_or("").to_string();
                 if !module.starts_with("AI_Brain") {
@@ -349,7 +463,8 @@ fn get_ai_alerts() -> Result<Vec<AiAlert>, String> {
 }
 
 fn parse_crontab_lines(raw_content: &str) -> Vec<OpsCrontabEntry> {
-    raw_content.lines()
+    raw_content
+        .lines()
         .filter_map(|line| {
             let original = line.to_string();
             let trimmed = line.trim();
@@ -365,7 +480,11 @@ fn parse_crontab_lines(raw_content: &str) -> Vec<OpsCrontabEntry> {
                     let tokens: Vec<&str> = after_hash.split_whitespace().collect();
                     tokens.len() >= 6
                 };
-                if looks_valid { (after_hash, false) } else { return None; }
+                if looks_valid {
+                    (after_hash, false)
+                } else {
+                    return None;
+                }
             } else {
                 (trimmed, true)
             };
@@ -382,7 +501,11 @@ fn parse_crontab_lines(raw_content: &str) -> Vec<OpsCrontabEntry> {
                 if command.is_empty() {
                     return None;
                 }
-                let name = command.split('/').last().unwrap_or(&command).to_string();
+                let name = command
+                    .split('/')
+                    .next_back()
+                    .unwrap_or(&command)
+                    .to_string();
                 return Some(OpsCrontabEntry {
                     schedule,
                     name,
@@ -400,7 +523,11 @@ fn parse_crontab_lines(raw_content: &str) -> Vec<OpsCrontabEntry> {
 
             let schedule = tokens[0..5].join(" ");
             let command = tokens[5..].join(" ");
-            let name = command.split('/').last().unwrap_or(&command).to_string();
+            let name = command
+                .split('/')
+                .next_back()
+                .unwrap_or(&command)
+                .to_string();
 
             Some(OpsCrontabEntry {
                 schedule,
@@ -421,7 +548,9 @@ fn write_crontab(content: &str) -> Result<(), String> {
         .spawn()
         .map_err(|e| e.to_string())?;
     if let Some(ref mut stdin) = child.stdin {
-        stdin.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+        stdin
+            .write_all(content.as_bytes())
+            .map_err(|e| e.to_string())?;
     }
     drop(child.stdin.take());
     child.wait().map_err(|e| e.to_string())?;
@@ -430,59 +559,79 @@ fn write_crontab(content: &str) -> Result<(), String> {
 
 #[tauri::command]
 fn ops_toggle_crontab(raw: String) -> Result<(), String> {
-    let output = Command::new("crontab").arg("-l").output().map_err(|e| e.to_string())?;
+    let output = Command::new("crontab")
+        .arg("-l")
+        .output()
+        .map_err(|e| e.to_string())?;
     let current = if output.status.success() {
         String::from_utf8_lossy(&output.stdout).to_string()
     } else {
         String::new()
     };
     let trimmed_raw = raw.trim();
-    let new_content: String = current.lines().map(|line| {
-        if line.trim() == trimmed_raw {
-            if trimmed_raw.starts_with('#') {
-                trimmed_raw.trim_start_matches('#').trim_start().to_string()
+    let new_content: String = current
+        .lines()
+        .map(|line| {
+            if line.trim() == trimmed_raw {
+                if trimmed_raw.starts_with('#') {
+                    trimmed_raw.trim_start_matches('#').trim_start().to_string()
+                } else {
+                    format!("#{}", trimmed_raw)
+                }
             } else {
-                format!("#{}", trimmed_raw)
+                line.to_string()
             }
-        } else {
-            line.to_string()
-        }
-    }).collect::<Vec<_>>().join("\n") + "\n";
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
     write_crontab(&new_content)
 }
 
 #[tauri::command]
 fn ops_delete_crontab(raw: String) -> Result<(), String> {
-    let output = Command::new("crontab").arg("-l").output().map_err(|e| e.to_string())?;
+    let output = Command::new("crontab")
+        .arg("-l")
+        .output()
+        .map_err(|e| e.to_string())?;
     let current = if output.status.success() {
         String::from_utf8_lossy(&output.stdout).to_string()
     } else {
         String::new()
     };
     let trimmed_raw = raw.trim();
-    let new_content: String = current.lines()
+    let new_content: String = current
+        .lines()
         .filter(|line| line.trim() != trimmed_raw)
-        .collect::<Vec<_>>().join("\n") + "\n";
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
     write_crontab(&new_content)
 }
 
 #[tauri::command]
 fn ops_toggle_launch_agent(plist_path: String, loaded: bool) -> Result<(), String> {
     let action = if loaded { "unload" } else { "load" };
-    let _ = Command::new("launchctl").args([action, &plist_path]).output();
+    let _ = Command::new("launchctl")
+        .args([action, &plist_path])
+        .output();
     Ok(())
 }
 
 #[tauri::command]
 fn ops_delete_launch_agent(plist_path: String) -> Result<(), String> {
-    let _ = Command::new("launchctl").args(["unload", &plist_path]).output();
+    let _ = Command::new("launchctl")
+        .args(["unload", &plist_path])
+        .output();
     fs::remove_file(&plist_path).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 fn ops_kill_session(pid: u32) -> Result<(), String> {
-    let result = Command::new("kill").args(["-15", &pid.to_string()]).output();
+    let result = Command::new("kill")
+        .args(["-15", &pid.to_string()])
+        .output();
     if result.map(|o| o.status.success()).unwrap_or(false) {
         return Ok(());
     }
@@ -626,8 +775,13 @@ fn get_config(state: State<Arc<Mutex<SharedData>>>) -> Result<GuardianConfig, St
 }
 
 #[tauri::command]
-fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: ModulesConfig, file_integrity: FileIntegrityConfig) -> Result<(), String> {
-    let config_path = PathBuf::from("../config.yaml");
+fn update_config(
+    state: State<Arc<Mutex<SharedData>>>,
+    mode: String,
+    modules: ModulesConfig,
+    file_integrity: FileIntegrityConfig,
+) -> Result<(), String> {
+    let config_path = resolve_config_path();
 
     {
         let mut data = state.lock().unwrap();
@@ -636,57 +790,11 @@ fn update_config(state: State<Arc<Mutex<SharedData>>>, mode: String, modules: Mo
         data.config.file_integrity = file_integrity.clone();
     }
 
-    // 讀取現有 YAML，保留所有 Python 側欄位，只合併更新 Rust 側管轄的欄位
-    let existing = fs::read_to_string(&config_path).unwrap_or_default();
-    let mut doc: serde_yaml::Value = serde_yaml::from_str(&existing)
-        .unwrap_or(serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
-
-    let map = doc.as_mapping_mut().ok_or("config.yaml 根節點不是 Mapping".to_string())?;
-
-    // 更新 mode
-    map.insert(
-        serde_yaml::Value::String("mode".to_string()),
-        serde_yaml::Value::String(mode),
-    );
-
-    // 更新 modules
-    let mut modules_map = serde_yaml::Mapping::new();
-    modules_map.insert(
-        serde_yaml::Value::String("visual".to_string()),
-        serde_yaml::Value::Bool(modules.visual),
-    );
-    modules_map.insert(
-        serde_yaml::Value::String("clipboard".to_string()),
-        serde_yaml::Value::Bool(modules.clipboard),
-    );
-    modules_map.insert(
-        serde_yaml::Value::String("network".to_string()),
-        serde_yaml::Value::Bool(modules.network),
-    );
-    map.insert(
-        serde_yaml::Value::String("modules".to_string()),
-        serde_yaml::Value::Mapping(modules_map),
-    );
-
-    // 更新 file_integrity
-    let paths_seq: serde_yaml::Value = serde_yaml::Value::Sequence(
-        file_integrity.custom_paths.iter()
-            .map(|p| serde_yaml::Value::String(p.clone()))
-            .collect(),
-    );
-    let mut fi_map = serde_yaml::Mapping::new();
-    fi_map.insert(
-        serde_yaml::Value::String("custom_paths".to_string()),
-        paths_seq,
-    );
-    map.insert(
-        serde_yaml::Value::String("file_integrity".to_string()),
-        serde_yaml::Value::Mapping(fi_map),
-    );
-
-    let yaml_str = serde_yaml::to_string(&doc).map_err(|e| e.to_string())?;
+    let existing =
+        fs::read_to_string(&config_path).map_err(|e| format!("無法讀取 config.yaml: {}", e))?;
+    let yaml_str = merge_config_yaml(&existing, &mode, &modules, &file_integrity)?;
     fs::write(&config_path, yaml_str).map_err(|e| e.to_string())?;
-    let _ = fs::write("../.reload_config", "1");
+    let _ = fs::write(reload_marker_for_config(&config_path), "1");
     Ok(())
 }
 
@@ -717,32 +825,57 @@ fn main() {
 
     // 初始化 Sysinfo 緩存 State 與背景採集執行緒
     let cache_mutex = Arc::new(StdMutex::new(SystemInfoCache {
-        resources: SystemResources { cpu: 0.0, ram: 0.0, disk: 0.0 },
+        resources: SystemResources {
+            cpu: 0.0,
+            ram: 0.0,
+            disk: 0.0,
+        },
         threats: vec![],
     }));
-    let app_state = AppState { cache: cache_mutex.clone() };
+    let shutdown_flag = Arc::new(AtomicBool::new(false));
+    let tauri_shutdown = shutdown_flag.clone();
+    let app_state = AppState {
+        cache: cache_mutex.clone(),
+    };
 
+    let sys_shutdown = shutdown_flag.clone();
     thread::spawn(move || {
         let mut sys = System::new_all();
         // 第一次讓系統初始化差值所需狀態
         sys.refresh_cpu_usage();
         sys.refresh_memory();
         sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-        
+
         loop {
+            if sys_shutdown.load(Ordering::Relaxed) {
+                log::info!("[Aegis] Stopping Sysinfo worker...");
+                break;
+            }
             thread::sleep(Duration::from_millis(1500));
-            
+
+            // 再次檢查，減低延遲
+            if sys_shutdown.load(Ordering::Relaxed) {
+                break;
+            }
             sys.refresh_cpu_usage();
             sys.refresh_memory();
             sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
             let cpu_count = sys.cpus().len() as f32;
             let global_cpu = sys.global_cpu_usage();
-            let cpu_usage = if cpu_count > 0.0 { global_cpu / cpu_count } else { global_cpu };
+            let cpu_usage = if cpu_count > 0.0 {
+                global_cpu / cpu_count
+            } else {
+                global_cpu
+            };
 
             let total_ram = sys.total_memory() as f32;
             let used_ram = sys.used_memory() as f32;
-            let ram_usage = if total_ram > 0.0 { (used_ram / total_ram) * 100.0 } else { 0.0 };
+            let ram_usage = if total_ram > 0.0 {
+                (used_ram / total_ram) * 100.0
+            } else {
+                0.0
+            };
 
             let disks = Disks::new_with_refreshed_list();
             let mut total_disk = 0.0;
@@ -752,26 +885,38 @@ fn main() {
                 available_disk += disk.available_space() as f32;
             }
             let used_disk = total_disk - available_disk;
-            let disk_usage = if total_disk > 0.0 { (used_disk / total_disk) * 100.0 } else { 0.0 };
+            let disk_usage = if total_disk > 0.0 {
+                (used_disk / total_disk) * 100.0
+            } else {
+                0.0
+            };
 
-            let mut procs: Vec<ThreatProcess> = sys.processes().iter()
+            let mut procs: Vec<ThreatProcess> = sys
+                .processes()
+                .iter()
                 .filter(|(_, p)| p.cpu_usage() > 3.0)
-                .map(|(pid, p)| {
-                    ThreatProcess {
-                        pid: pid.as_u32(),
-                        name: p.name().to_string_lossy().into_owned(),
-                        cpu_usage: p.cpu_usage(),
-                        memory_mb: (p.memory() as f64) / 1024.0 / 1024.0,
-                        status: format!("{:?}", p.status()),
-                    }
+                .map(|(pid, p)| ThreatProcess {
+                    pid: pid.as_u32(),
+                    name: p.name().to_string_lossy().into_owned(),
+                    cpu_usage: p.cpu_usage(),
+                    memory_mb: (p.memory() as f64) / 1024.0 / 1024.0,
+                    status: format!("{:?}", p.status()),
                 })
                 .collect();
-            
-            procs.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal));
+
+            procs.sort_by(|a, b| {
+                b.cpu_usage
+                    .partial_cmp(&a.cpu_usage)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             procs.truncate(8);
 
             if let Ok(mut cache) = cache_mutex.lock() {
-                cache.resources = SystemResources { cpu: cpu_usage, ram: ram_usage, disk: disk_usage };
+                cache.resources = SystemResources {
+                    cpu: cpu_usage,
+                    ram: ram_usage,
+                    disk: disk_usage,
+                };
                 cache.threats = procs;
             }
         }
@@ -779,6 +924,12 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                // 在 macOS 視窗關閉即強制 App 退出，觸發清理流程
+                window.app_handle().exit(0);
+            }
+        })
         .manage(shared_data)
         .manage(app_state)
         .setup(|app| {
@@ -790,9 +941,7 @@ fn main() {
                 .sidecar("aegis-core-daemon")
                 .expect("[Aegis] 找不到 sidecar: aegis-core-daemon");
 
-            let (mut rx, child) = sidecar_cmd
-                .spawn()
-                .expect("[Aegis] 無法啟動 Python 後端");
+            let (mut rx, child) = sidecar_cmd.spawn().expect("[Aegis] 無法啟動 Python 後端");
 
             // 將 child 保存到 state，以便後續關閉
             let child_mutex = Arc::new(Mutex::new(Some(child)));
@@ -829,8 +978,17 @@ fn main() {
                     last_pos = meta.len();
                 }
 
+                let incidents_shutdown = shutdown_flag.clone();
                 loop {
+                    if incidents_shutdown.load(Ordering::Relaxed) {
+                        log::info!("[Aegis] Stopping Incidents observer...");
+                        break;
+                    }
                     thread::sleep(Duration::from_secs(1));
+
+                    if incidents_shutdown.load(Ordering::Relaxed) {
+                        break;
+                    }
 
                     if let Ok(mut file) = File::open(&path) {
                         if let Ok(meta) = file.metadata() {
@@ -839,20 +997,31 @@ fn main() {
                                 // 有新資料，從上次讀到的位置繼續
                                 let _ = file.seek(SeekFrom::Start(last_pos));
                                 let reader = BufReader::new(&file);
-                                for line in reader.lines().filter_map(|l| l.ok()) {
+                                for line in reader.lines().map_while(Result::ok) {
                                     if let Ok(v) = serde_json::from_str::<Value>(&line) {
                                         let module = v["module"].as_str().unwrap_or("").to_string();
                                         if module.starts_with("AI_Brain") {
-                                            let timestamp_str = v["timestamp"].as_str().unwrap_or("");
+                                            let timestamp_str =
+                                                v["timestamp"].as_str().unwrap_or("");
                                             let (time, _) = parse_timestamp(timestamp_str);
                                             let metadata = &v["metadata"];
                                             let alert = AiAlert {
                                                 time,
                                                 module: module.clone(),
-                                                severity: v["severity"].as_str().unwrap_or("INFO").to_string(),
-                                                message: v["message"].as_str().unwrap_or("").to_string(),
-                                                preview: metadata["preview"].as_str().map(|s| s.to_string()),
-                                                model: metadata["model"].as_str().map(|s| s.to_string()),
+                                                severity: v["severity"]
+                                                    .as_str()
+                                                    .unwrap_or("INFO")
+                                                    .to_string(),
+                                                message: v["message"]
+                                                    .as_str()
+                                                    .unwrap_or("")
+                                                    .to_string(),
+                                                preview: metadata["preview"]
+                                                    .as_str()
+                                                    .map(|s| s.to_string()),
+                                                model: metadata["model"]
+                                                    .as_str()
+                                                    .map(|s| s.to_string()),
                                             };
                                             let _ = app_handle.emit("ai-alert", &alert);
                                         }
@@ -885,6 +1054,9 @@ fn main() {
             remove_network_whitelist,
             get_network_whitelist,
             check_file_integrity,
+            file_integrity::rebuild_file_integrity_baseline,
+            file_integrity::accept_file_integrity_change,
+            file_integrity::export_file_integrity_report,
             quarantine::move_to_quarantine,
             process_control::terminate_process,
             get_system_resources,
@@ -893,8 +1065,12 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
+        .run(move |app_handle, event| {
             if let tauri::RunEvent::Exit = event {
+                // 1. 先標記 Shutdown flag，通知背景執行緒退出
+                tauri_shutdown.store(true, Ordering::Relaxed);
+
+                // 2. 獲取 Sidecar child 並確實關閉
                 let child_arc = {
                     let child_state: State<Arc<Mutex<Option<CommandChild>>>> = app_handle.state();
                     child_state.inner().clone()
@@ -911,4 +1087,65 @@ fn main() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merge_config_preserves_python_owned_sections() {
+        let existing = r#"
+language: zh-TW
+behavior_firewall:
+  regex_rules:
+    openai_key: sk-[a-zA-Z0-9]{20,}
+terminal_rules:
+  high_risk_keywords:
+    - rm -rf /
+network_monitor:
+  check_interval: 5
+modules:
+  visual: true
+  clipboard: true
+  network: true
+  future_module: true
+file_integrity:
+  custom_paths: []
+  enabled: true
+"#;
+
+        let merged = merge_config_yaml(
+            existing,
+            "Strict Blocking",
+            &ModulesConfig {
+                visual: false,
+                clipboard: true,
+                network: false,
+            },
+            &FileIntegrityConfig {
+                custom_paths: vec!["/tmp/aegis".to_string()],
+            },
+        )
+        .unwrap();
+        let doc: serde_yaml::Value = serde_yaml::from_str(&merged).unwrap();
+
+        assert_eq!(doc["mode"].as_str(), Some("Strict Blocking"));
+        assert_eq!(doc["modules"]["visual"].as_bool(), Some(false));
+        assert_eq!(doc["modules"]["future_module"].as_bool(), Some(true));
+        assert_eq!(
+            doc["behavior_firewall"]["regex_rules"]["openai_key"].as_str(),
+            Some("sk-[a-zA-Z0-9]{20,}")
+        );
+        assert_eq!(
+            doc["terminal_rules"]["high_risk_keywords"][0].as_str(),
+            Some("rm -rf /")
+        );
+        assert_eq!(doc["network_monitor"]["check_interval"].as_i64(), Some(5));
+        assert_eq!(doc["file_integrity"]["enabled"].as_bool(), Some(true));
+        assert_eq!(
+            doc["file_integrity"]["custom_paths"][0].as_str(),
+            Some("/tmp/aegis")
+        );
+    }
 }

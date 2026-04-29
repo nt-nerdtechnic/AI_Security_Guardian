@@ -11,18 +11,19 @@
 - [x] **Phase 4**：macOS .dmg 安裝包封裝（`AI Security Guardian_1.1.0_aarch64.dmg`）
 
 ### 🔴 緊急 Bug 修復 (Hotfix)
-- [ ] **白名單重啟清空問題**：`whitelist.rs` 的 `DROP TABLE` 應改為 `CREATE TABLE IF NOT EXISTS`，避免每次重啟清除使用者白名單設定。
-- [ ] **config.yaml 覆寫問題**：`update_config` Rust Command 會破壞 Python 側的 `behavior_firewall` / `terminal_rules` 欄位，需改為合併更新而非全量覆寫。
+- [x] **白名單重啟清空問題**：修正 `cleanup_stale_whitelist` 邏輯，從過於激進的自動清理改為持久化，確保服務重開後白名單依然有效。
+- [x] **config.yaml 覆寫問題**：`update_config` 已改為合併更新，只寫入 `mode`、`modules`、`file_integrity.custom_paths`，並保留 Python 側 `behavior_firewall` / `terminal_rules` / `network_monitor` 等欄位；config 路徑解析支援 `AEGIS_CONFIG_PATH`、repo root fallback 與 reload marker 同目錄寫入。
+- [x] **Telegram callback 安全閉環**：callback 已加入 sender 驗證與 HMAC-SHA256 簽名；`terminate` 加入 PID 0/1、自身程序與核心程序保護，成功/失敗會寫入 `logs/incidents.json`；`quarantine` 只允許處理 incidents metadata 中已記錄的檔案路徑。
 
 ### 🟢 近期目標 (Short-term)
-- [ ] **檔案完整性強化**：`file_integrity.rs` 加入 SHA-256 checksum 比對，取代「24 小時修改」的粗糙判斷，降低誤報率。
-- [ ] **Telegram 安全驗證**：callback 處理加入 HMAC-SHA256 簽名驗證，防止偽造 callback 觸發遠端指令。
-- [ ] **Windows 封裝**：補完 Windows `.exe` / `.msi` 的自動化建構流程。
+- [x] **檔案完整性強化**：`file_integrity.rs` 已加入 SHA-256 baseline、遞迴目錄 hash、重建 baseline、接受單一變更與匯出差異報告的 UI 操作。
+- [ ] **Windows 封裝**：`tauri.conf.json` 已加入 `nsis` / `msi` targets，CI 已加入 macOS/Windows Rust check；Windows sidecar binary 與平台差異仍列為 experimental。
+- [ ] **v1.1.1 Hotfix 發布**：建議範圍限於安全補強、測試、CI 與文件同步，不混入語義模型、外掛系統等中期功能。
 
 ### 🟡 中期目標 (Mid-term)
-- [ ] **語義過濾器增強**：提供更精準的威脅識別，減少 AI 分析誤報。
-- [ ] **多模型支援**：優化對 OmniParser-v2.0 與 Qwen2.5-VL 等視覺模型的支援。
-- [ ] **外掛系統**：允許第三方開發者自定義監控規則與動作。
+- [x] **語義過濾器增強（薄切片）**：`guardian_brain.py` 已新增 JSON schema parser，輸出 `verdict`、`confidence`、`category`、`reason`、`recommended_action`，並保留舊版 YES/NO 相容解析。
+- [x] **多模型支援（薄切片）**：Ollama URL、語義模型、視覺模型已可由 `config.yaml` 的 `ai.models` 或 `AEGIS_*` 環境變數驅動；OmniParser-v2.0 adapter 仍列為後續研究。
+- [ ] **外掛系統**：先保留 `ai.rule_packs` 的資料型 rule pack 入口，不載入任意程式碼；後續需定義 YAML/JSON rule pack schema 與驗證器。
 
 ### 🔵 長期願景 (Long-term)
 - [ ] **分散式通報網絡**：支援多個守門員之間的威脅情報共享。

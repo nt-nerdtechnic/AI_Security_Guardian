@@ -20,8 +20,11 @@
 - **監控引擎 (Core Engine)**：**Python (MVVM)** (負責行為監控、AI 調度與自動緩解)
 - **UI & 系統外殼**：**Tauri v2 (Rust)** (負責 Sidecar 管理、UI 呈現、高權限動作執行)
 - **通訊機制**：**Sidecar + NDJSON Logs + Tauri IPC emit** (Python 寫入日誌，Rust tail-read 並推送前端)
-- **AI 大腦**：`llama3`（語義分析）/ `qwen2.5vl:latest`（視覺多模態）透過 Ollama 本地推理
+- **AI 大腦**：預設 `llama3`（語義分析）/ `qwen2.5vl:latest`（視覺多模態）透過 Ollama 本地推理，可由 `config.yaml` 的 `ai.models` 或 `AEGIS_SEMANTIC_MODEL` / `AEGIS_VISUAL_MODEL` 覆寫。
+- **語義判定 schema**：`guardian_brain.py` 以 JSON schema 解析 `verdict`、`confidence`、`category`、`reason`、`recommended_action`，並保留舊版 YES/NO fallback。
 - **白名單持久化**：SQLite (`rusqlite` bundled)，存於 `~/.aegis-guardian/whitelist.db`
+- **檔案完整性**：SHA-256 baseline 存於 `~/.aegis-guardian/file_checksums.json`，支援遞迴目錄 hash、接受單一變更與重建 baseline。
+- **Telegram 遠端操作防護**：Inline callback 使用 sender 驗證與 HMAC-SHA256 簽名；遠端終止與隔離會寫入審計事件。
 - **開發語言**：Python 3.10+ / Rust 1.77+ (Tauri v2) / React + Vite (JSX + Tailwind CSS)
 
 ## 4. 階段開發目標 (Milestones)
@@ -31,10 +34,17 @@
 - **Phase 4** ✅：**編譯與安裝檔封裝 (Production Build)**。已產出 `AI Security Guardian_1.1.0_aarch64.dmg` 與 `.app` bundle（macOS Apple Silicon），`tauri.conf.json` 已設定 `externalBin` 打包 Sidecar binary。
 
 ### 已知待改善項目
-- `whitelist.rs` 每次啟動執行 `DROP TABLE`，重啟後白名單會被清空，需改為 `CREATE TABLE IF NOT EXISTS`。
-- `file_integrity.rs` 以「24 小時內修改」為 WARNING 判斷，缺乏 checksum 機制，誤報率偏高。
-- Telegram callback 處理未驗證來源 (HMAC-SHA256)，存在偽造 callback 的遠端控制風險。
-- `update_config` Rust 側會完全覆寫 `config.yaml`，破壞 Python 側的 `behavior_firewall` / `terminal_rules` 等欄位。
+- `whitelist.rs` 已修正。之前因為 `cleanup_stale_whitelist` 邏輯過於激進導致重啟後清空，現已改為持久化。
+- `file_integrity.rs` 已改用 checksum baseline；仍需擴充更多權限不足、檔案不存在與跨平台路徑測試。
+- Telegram callback 已加入 HMAC 與 sender 驗證；仍需在真實 Bot 環境做端到端驗證。
+- `update_config` 已改為合併更新並抽出路徑解析；仍需在 packaged app 與 Windows sidecar 場景驗證。
+- Windows 支援目前為 experimental：安裝器 target 已加入，但 `lsof`、`kill`、`HOME`、LaunchAgents 與 macOS 特定監控仍需平台分支。
+
+### v1.1.1 建議範圍
+- 安全補強：config 合併更新、Telegram callback 閉環、process terminate 保護清單。
+- 產品化補強：file integrity baseline 管理、UI 操作、差異報告。
+- 工程品質：Python / Rust / UI 測試與 CI matrix。
+- AI 中期能力只納入薄切片：語義 JSON schema parser 與 config/env 驅動模型選擇；完整多模型路由、OmniParser adapter、rule pack schema 與分散式通報仍排入後續 milestone。
 
 ---
-*Updated for Current Architecture on 2026-03-30*
+*Updated for Current Architecture on 2026-04-28*

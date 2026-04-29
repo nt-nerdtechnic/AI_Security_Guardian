@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app"],
+    "targets": ["dmg", "app", "nsis", "msi"],
     "externalBin": [
       "binaries/aegis-core-daemon"
     ],

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { FileCheck, AlertTriangle, ShieldCheck, Info, Plus, Trash2, Settings2 } from 'lucide-react';
+import { FileCheck, AlertTriangle, ShieldCheck, Info, Plus, Trash2, Settings2, CheckCircle2, RefreshCw, Download } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { TauriApi } from '../models/tauriApi';
 
@@ -10,6 +10,12 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
     const [config, setConfig] = useState(null);
     const [isManaging, setIsManaging] = useState(false);
     const [newPath, setNewPath] = useState('');
+    const [actionMessage, setActionMessage] = useState('');
+
+    const refreshAlerts = async () => {
+        const data = await invoke('check_file_integrity');
+        setAlerts(data);
+    };
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -24,17 +30,10 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
     }, []);
 
     useEffect(() => {
-        const fetchAlerts = async () => {
-            try {
-                const data = await invoke('check_file_integrity');
-                setAlerts(data);
-            } catch (e) {
-                console.error("Failed to fetch file integrity", e);
-            }
-        };
-
-        fetchAlerts();
-        const interval = setInterval(fetchAlerts, 10000);
+        refreshAlerts().catch((e) => console.error("Failed to fetch file integrity", e));
+        const interval = setInterval(() => {
+            refreshAlerts().catch((e) => console.error("Failed to fetch file integrity", e));
+        }, 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -51,9 +50,7 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                 await TauriApi.updateConfig(config.mode, config.modules, updatedConfig.file_integrity);
                 setConfig(updatedConfig);
                 setNewPath('');
-                // 立即重新抓一次檔案完整性
-                const data = await invoke('check_file_integrity');
-                setAlerts(data);
+                await refreshAlerts();
             }
         } catch (e) {
             console.error("Failed to add path", e);
@@ -68,12 +65,20 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                 updatedConfig.file_integrity.custom_paths = updatedConfig.file_integrity.custom_paths.filter(p => p !== pathToRemove);
                 await TauriApi.updateConfig(config.mode, config.modules, updatedConfig.file_integrity);
                 setConfig(updatedConfig);
-                // 更新清單
-                const data = await invoke('check_file_integrity');
-                setAlerts(data);
+                await refreshAlerts();
             }
         } catch (e) {
             console.error("Failed to remove path", e);
+        }
+    };
+
+    const runBaselineAction = async (action, payload = {}) => {
+        try {
+            const result = await invoke(action, payload);
+            setActionMessage(result.message || '');
+            await refreshAlerts();
+        } catch (e) {
+            setActionMessage(String(e));
         }
     };
 
@@ -112,6 +117,24 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                     >
                         <Settings2 className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                        onClick={() => runBaselineAction('export_file_integrity_report')}
+                        className={`p-1.5 rounded-lg border transition-colors ${darkMode ? 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-300 hover:border-slate-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700'}`}
+                        title={t('file_integrity.export_report') || 'Export Report'}
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (window.confirm(t('file_integrity.confirm_rebuild_baseline') || 'Rebuild the file integrity baseline for all monitored paths?')) {
+                                runBaselineAction('rebuild_file_integrity_baseline');
+                            }
+                        }}
+                        className={`p-1.5 rounded-lg border transition-colors ${darkMode ? 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-300 hover:border-slate-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700'}`}
+                        title={t('file_integrity.rebuild_baseline') || 'Rebuild Baseline'}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
                     <div className={`px-3 py-1 rounded-lg border text-[10px] font-mono ${
                         hasWarning
                             ? 'bg-red-500/10 border-red-500/40 text-red-400'
@@ -123,6 +146,12 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                     </div>
                 </div>
             </div>
+
+            {actionMessage && (
+                <div className={`mb-3 px-3 py-2 rounded-lg border text-[11px] font-mono relative z-10 ${darkMode ? 'bg-slate-800/40 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                    {actionMessage}
+                </div>
+            )}
 
             {isManaging && config && (
                 <div className={`mb-4 p-4 rounded-xl border ${darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-white/60 border-slate-200'} relative z-10`}>
@@ -208,8 +237,7 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                                             try {
                                                 const res = await invoke('move_to_quarantine', { file_path: alert.file_path });
                                                 console.log("Quarantine result:", res);
-                                                const data = await invoke('check_file_integrity');
-                                                setAlerts(data);
+                                                await refreshAlerts();
                                             } catch (err) {
                                                 console.error("Failed to quarantine file:", err);
                                             }
@@ -218,6 +246,16 @@ const FileIntegrityAlerts = ({ darkMode, t: theme }) => {
                                     className="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded text-[10px] font-bold text-amber-500 uppercase tracking-wider transition-colors"
                                 >
                                     {t('file_integrity.btn_quarantine')}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm(t('file_integrity.confirm_accept_change', { path: alert.file_path }) || `Accept this file change as the new trusted baseline?\nPath: ${alert.file_path}`)) {
+                                            runBaselineAction('accept_file_integrity_change', { filePath: alert.file_path });
+                                        }
+                                    }}
+                                    className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded text-[10px] font-bold text-emerald-500 uppercase tracking-wider transition-colors flex items-center"
+                                >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" /> {t('file_integrity.btn_accept_change') || 'Accept'}
                                 </button>
                                 <button
                                     onClick={() => {

@@ -1,9 +1,10 @@
 // whitelist.rs — Network Port Whitelist (SQLite 持久化)
-use rusqlite::{Connection, Result, params};
+use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct WhitelistEntry {
     pub port: u16,
     pub pid: u32,
@@ -13,8 +14,7 @@ pub struct WhitelistEntry {
 
 /// 取得 DB 路徑：存在 home dir 的 .aegis-guardian 資料夾中
 pub fn db_path() -> PathBuf {
-    let base = dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."));
+    let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     base.join(".aegis-guardian").join("whitelist.db")
 }
 
@@ -32,7 +32,7 @@ pub fn init_db() -> Result<Connection> {
             pid           INTEGER NOT NULL DEFAULT 0,
             process_name  TEXT NOT NULL DEFAULT '',
             approved_at   TEXT NOT NULL
-        );"
+        );",
     )?;
     Ok(conn)
 }
@@ -60,31 +60,29 @@ pub fn remove_whitelist(conn: &Connection, port: u16) -> Result<()> {
 
 /// 取得所有已核准的 port 與 pid 列表
 pub fn get_whitelisted_ports(conn: &Connection) -> Result<Vec<(u16, u32)>> {
-    let mut stmt = conn.prepare("SELECT port, pid FROM network_whitelist ORDER BY approved_at DESC")?;
+    let mut stmt =
+        conn.prepare("SELECT port, pid FROM network_whitelist ORDER BY approved_at DESC")?;
     let ports: Vec<(u16, u32)> = stmt
         .query_map([], |row| {
-            Ok((
-                row.get::<_, i64>(0)? as u16,
-                row.get::<_, i64>(1)? as u32,
-            ))
+            Ok((row.get::<_, i64>(0)? as u16, row.get::<_, i64>(1)? as u32))
         })?
         .filter_map(|r| r.ok())
         .collect();
     Ok(ports)
 }
 
-/// 自動清理已失效（不存在於目前監聽清單中，或 PID 不符）的白名單
-pub fn cleanup_stale_whitelist(conn: &Connection, active_ports_and_pids: &[(u16, u32)]) -> Result<()> {
-    let stored_ports = get_whitelisted_ports(conn)?;
-    for (port, pid) in stored_ports {
-        if !active_ports_and_pids.contains(&(port, pid)) {
-            remove_whitelist(conn, port)?;
-        }
-    }
+/// 目前改為僅讀取，不再主動清理已失聯的白名單，確保重啟後依然具備持久性。
+pub fn cleanup_stale_whitelist(
+    _conn: &Connection,
+    _active_ports_and_pids: &[(u16, u32)],
+) -> Result<()> {
+    // 為了確保白名單持久性，在此版本中我們停止主動刪除邏輯。
+    // 如果未來需要清理，建議改為標記「過期」而非直接從 DB 抹除。
     Ok(())
 }
 
 /// 取得所有白名單詳細記錄
+#[allow(dead_code)]
 pub fn get_whitelist_entries(conn: &Connection) -> Result<Vec<WhitelistEntry>> {
     let mut stmt = conn.prepare(
         "SELECT port, pid, process_name, approved_at FROM network_whitelist ORDER BY approved_at DESC"
@@ -92,10 +90,10 @@ pub fn get_whitelist_entries(conn: &Connection) -> Result<Vec<WhitelistEntry>> {
     let entries = stmt
         .query_map([], |row| {
             Ok(WhitelistEntry {
-                port:         row.get::<_, i64>(0)? as u16,
-                pid:          row.get::<_, i64>(1)? as u32,
+                port: row.get::<_, i64>(0)? as u16,
+                pid: row.get::<_, i64>(1)? as u32,
                 process_name: row.get(2)?,
-                approved_at:  row.get(3)?,
+                approved_at: row.get(3)?,
             })
         })?
         .filter_map(|r| r.ok())
@@ -142,8 +140,9 @@ mod tests {
                 pid INTEGER NOT NULL DEFAULT 0,
                 process_name TEXT NOT NULL DEFAULT '',
                 approved_at TEXT NOT NULL
-            );"
-        ).unwrap();
+            );",
+        )
+        .unwrap();
 
         add_whitelist(&conn, 3000, 1234, "node").unwrap();
         add_whitelist(&conn, 8080, 5678, "nginx").unwrap();

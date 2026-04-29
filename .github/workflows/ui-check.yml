@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  lint:
+  ui:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -25,3 +25,26 @@ jobs:
       run: |
         cd ui
         npm run lint
+    - name: Build UI
+      run: |
+        cd ui
+        npm run build
+
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    - name: Rust fmt
+      run: cargo fmt --manifest-path ui/src-tauri/Cargo.toml -- --check
+    - name: Rust clippy
+      run: cargo clippy --manifest-path ui/src-tauri/Cargo.toml --all-targets -- -D warnings
+    - name: Rust tests
+      run: cargo test --manifest-path ui/src-tauri/Cargo.toml
